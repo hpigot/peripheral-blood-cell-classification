@@ -22,6 +22,9 @@ cpu = ["torch>=2.6", "torchvision>=0.21"]
 cu126 = ["torch>=2.6", "torchvision>=0.21"]
 export = ["onnx>=1.17", "onnxruntime>=1.20"]
 
+[project.scripts]
+bloodcell-split = "bloodcell.data:main"
+
 [dependency-groups]
 dev = [
   "mypy>=1.13",
