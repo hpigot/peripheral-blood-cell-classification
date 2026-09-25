@@ -24,6 +24,8 @@ export = ["onnx>=1.17", "onnxruntime>=1.20"]
 
 [project.scripts]
 bloodcell-split = "bloodcell.data:main"
+bloodcell-train = "bloodcell.train:main"
+bloodcell-eval = "bloodcell.evaluate:main"
 
 [dependency-groups]
 dev = [
@@ -77,6 +79,6 @@ check_untyped_defs = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-# scikit-learn ships no type information
-module = ["sklearn", "sklearn.*"]
+# scikit-learn and torchvision ship no type information
+module = ["sklearn", "sklearn.*", "torchvision", "torchvision.*"]
 ignore_missing_imports = true
