@@ -1,0 +1,22 @@
+# datasets and training outputs stay local (splits.csv is committed)
+data/*
+!data/splits.csv
+!data/README.md
+runs/
+
+# python
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# c++
+build/
+
+# model artefacts
+*.pt
+*.onnx
+.coverage
+coverage.xml
+htmlcov/
