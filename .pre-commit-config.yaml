@@ -1,0 +1,31 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=1024] # data/splits.csv is ~0.8 MB
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: no-dataset-or-weights
+        name: keep dataset images and model weights out of git
+        language: fail
+        entry: "only data/README.md and data/splits.csv may be committed under data/, and no images or weights outside docs/:"
+        files: '^data/(?!README\.md$|splits\.csv$)|\.(jpe?g|png|bmp|tiff?|pt|pth|ckpt|onnx)$'
+        exclude: ^docs/
