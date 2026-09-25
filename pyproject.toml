@@ -20,12 +20,13 @@ dependencies = [
 # `uv sync --extra cu126` (laptop with an NVIDIA GPU).
 cpu = ["torch>=2.6", "torchvision>=0.21"]
 cu126 = ["torch>=2.6", "torchvision>=0.21"]
-export = ["onnx>=1.17", "onnxruntime>=1.20"]
+export = ["onnx>=1.17", "onnxruntime>=1.20", "onnxscript>=0.3"]
 
 [project.scripts]
 bloodcell-split = "bloodcell.data:main"
 bloodcell-train = "bloodcell.train:main"
 bloodcell-eval = "bloodcell.evaluate:main"
+bloodcell-export = "bloodcell.export:main"
 
 [dependency-groups]
 dev = [
@@ -79,6 +80,6 @@ check_untyped_defs = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-# scikit-learn and torchvision ship no type information
-module = ["sklearn", "sklearn.*", "torchvision", "torchvision.*"]
+# these ship no type information
+module = ["onnxruntime", "sklearn", "sklearn.*", "torchvision", "torchvision.*"]
 ignore_missing_imports = true
