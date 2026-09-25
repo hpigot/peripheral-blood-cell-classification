@@ -20,3 +20,6 @@ build/
 .coverage
 coverage.xml
 htmlcov/
+
+# personal assistant config
+.claude/settings.local.json
