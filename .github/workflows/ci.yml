@@ -1,0 +1,68 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - run: uv sync --locked --extra cpu --extra export
+      # gitleaks has its own job below, which scans the full history
+      - run: uv run pre-commit run --all-files --show-diff-on-failure
+        env:
+          SKIP: gitleaks
+      - run: uv run mypy
+
+  secrets:
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.30.1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar xz -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --redact --no-banner -v .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - run: uv sync --locked --extra cpu --extra export
+      - run: uv run pytest --cov --cov-report=term-missing
+
+  edge-cpp:
+    # Compile check on x86; the Pi build uses the aarch64 ORT release instead.
+    runs-on: ubuntu-latest
+    env:
+      ORT_VERSION: 1.30.0
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libopencv-dev
+      - run: |
+          curl -sSfL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" \
+            | tar xz -C "$RUNNER_TEMP"
+      - run: >
+          cmake -S edge/cpp -B build
+          -DONNXRUNTIME_ROOT="$RUNNER_TEMP/onnxruntime-linux-x64-${ORT_VERSION}"
+          -DCMAKE_CXX_FLAGS="-Wall -Wextra"
+      - run: cmake --build build -j
