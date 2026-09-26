@@ -19,7 +19,7 @@ import seaborn as sns
 from matplotlib import rc_context
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
-from matplotlib.ticker import PercentFormatter
+from matplotlib.ticker import MaxNLocator, PercentFormatter
 
 MODES = ("light", "dark")
 
@@ -331,12 +331,17 @@ def training_curves(histories: dict[str, list[dict]], mode: str) -> Figure:
                         fontsize=9,
                     )
             if "%" in label:
+                # steps of 1, 2 or 5 only, so a 2.5% tick is never rounded into a wrong label
+                ax.yaxis.set_major_locator(MaxNLocator(steps=[1, 2, 5, 10]))
                 ax.yaxis.set_major_formatter(PercentFormatter(1, decimals=0 if key != "ece" else 1))
             ax.grid(axis="y")
             ax.set_axisbelow(True)
             ax.set_title(title)
             ax.set_xlabel("Epoch")
             ax.margins(y=0.2)
+            if key == "balanced_accuracy":
+                lo, hi = ax.get_ylim()
+                ax.set_ylim(lo, min(hi, 1.01))  # no ticks above 100%
         if len(histories) > 1:
             axes[0].legend(loc="upper right")
     return fig
