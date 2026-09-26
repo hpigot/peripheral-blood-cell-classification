@@ -19,7 +19,7 @@ import seaborn as sns
 from matplotlib import rc_context
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
-from matplotlib.ticker import PercentFormatter
+from matplotlib.ticker import MaxNLocator, PercentFormatter
 
 MODES = ("light", "dark")
 
@@ -82,7 +82,8 @@ DPI = 200
 
 
 def model_color(arch: str, mode: str) -> str:
-    return PALETTES[mode].series[MODEL_SLOTS[arch]]
+    """The model's fixed slot; an unknown name falls back to slot 1."""
+    return PALETTES[mode].series[MODEL_SLOTS.get(arch, 0)]
 
 
 def _rc(mode: str) -> dict:
@@ -198,13 +199,14 @@ def per_class_recall(recalls: dict[str, dict[str, float]], mode: str) -> Figure:
         ax = fig.subplots()
         ax.grid(axis="y")
         ax.set_axisbelow(True)
-        for arch, rec in recalls.items():
-            color = model_color(arch, mode) if arch in MODEL_SLOTS else p.series[0]
+        for k, (arch, rec) in enumerate(recalls.items()):
+            # nudge each model off the row line so equal scores don't hide each other
+            offset = (k - (len(recalls) - 1) / 2) * 0.2
             ax.scatter(
                 [rec[c] for c in classes],
-                range(len(classes)),
+                [i + offset for i in range(len(classes))],
                 s=DOT_SIZE,
-                color=color,
+                color=model_color(arch, mode),
                 edgecolors=p.surface,
                 linewidths=2,
                 zorder=3,
@@ -219,7 +221,8 @@ def per_class_recall(recalls: dict[str, dict[str, float]], mode: str) -> Figure:
         ax.set_xlabel("Recall (test set)")
         ax.set_title("Recall by class")
         if len(recalls) > 1:
-            ax.legend(loc="lower right")
+            # the best classes sit at the top right, so the top left stays empty
+            ax.legend(loc="upper left")
         else:
             ax.set_title(f"Recall by class · {next(iter(recalls))}")
     return fig
@@ -238,15 +241,15 @@ def reliability(conditions: dict[str, dict], mode: str) -> Figure:
         fig = Figure(figsize=(6.4, 6.4), layout="constrained")
         top, bottom = fig.subplots(2, 1, sharex=True, height_ratios=(3, 1))
         top.plot([0, 1], [0, 1], color=p.axis, lw=1, zorder=1)
-        top.text(
-            0.97,
-            0.9,
+        # low confidence is where bins are sparse, so the label stays clear of the curves
+        top.annotate(
             "perfectly calibrated",
+            (0.2, 0.2),
+            xytext=(6, -4),
+            textcoords="offset points",
             color=p.muted,
             fontsize=8,
-            ha="right",
-            rotation=45,
-            rotation_mode="anchor",
+            va="top",
         )
         colors = (p.muted, p.series[0])
         for k, ((label, r), color) in enumerate(zip(conditions.items(), colors, strict=False)):
@@ -289,45 +292,61 @@ def reliability(conditions: dict[str, dict], mode: str) -> Figure:
     return fig
 
 
-def training_curves(history: list[dict], mode: str) -> Figure:
-    """Small multiples, one measure per panel: never two y-axes on one chart."""
+def training_curves(histories: dict[str, list[dict]], mode: str) -> Figure:
+    """Small multiples, one measure per panel: never two y-axes on one chart.
+
+    ``histories`` maps a model name to its per-epoch history (at most 3 models).
+    One model gets an endpoint label per panel; several get a legend instead.
+    """
+    if len(histories) > 3:
+        raise ValueError("at most 3 models per figure; facet or split the comparison")
     panels = [
         ("train_loss", "Training loss", "{:.3f}"),
         ("balanced_accuracy", "Val balanced accuracy", "{:.1%}"),
         ("ece", "Val ECE", "{:.1%}"),
     ]
-    epochs = [h["epoch"] for h in history]
     with style(mode) as p:
         fig = Figure(figsize=(9.6, 3.2), layout="constrained")
         axes = fig.subplots(1, 3, sharex=True)
         for ax, (key, title, label) in zip(axes, panels, strict=True):
-            ys = [h[key] for h in history]
-            ax.plot(epochs, ys, color=p.series[0])
-            ax.scatter(
-                epochs[-1:],
-                ys[-1:],
-                s=DOT_SIZE,
-                color=p.series[0],
-                edgecolors=p.surface,
-                linewidths=2,
-                zorder=3,
-            )
-            ax.annotate(
-                label.format(ys[-1]),  # label the endpoint only
-                (epochs[-1], ys[-1]),
-                xytext=(0, 8),
-                textcoords="offset points",
-                ha="center",
-                color=p.ink,
-                fontsize=9,
-            )
+            for arch, history in histories.items():
+                color = model_color(arch, mode)
+                epochs = [h["epoch"] for h in history]
+                ys = [h[key] for h in history]
+                ax.plot(epochs, ys, color=color, label=arch)
+                ax.scatter(
+                    epochs[-1:],
+                    ys[-1:],
+                    s=DOT_SIZE,
+                    color=color,
+                    edgecolors=p.surface,
+                    linewidths=2,
+                    zorder=3,
+                )
+                if len(histories) == 1:
+                    ax.annotate(
+                        label.format(ys[-1]),  # label the endpoint only
+                        (epochs[-1], ys[-1]),
+                        xytext=(0, 8),
+                        textcoords="offset points",
+                        ha="center",
+                        color=p.ink,
+                        fontsize=9,
+                    )
             if "%" in label:
+                # steps of 1, 2 or 5 only, so a 2.5% tick is never rounded into a wrong label
+                ax.yaxis.set_major_locator(MaxNLocator(steps=[1, 2, 5, 10]))
                 ax.yaxis.set_major_formatter(PercentFormatter(1, decimals=0 if key != "ece" else 1))
             ax.grid(axis="y")
             ax.set_axisbelow(True)
             ax.set_title(title)
             ax.set_xlabel("Epoch")
             ax.margins(y=0.2)
+            if key == "balanced_accuracy":
+                lo, hi = ax.get_ylim()
+                ax.set_ylim(lo, min(hi, 1.01))  # no ticks above 100%
+        if len(histories) > 1:
+            axes[0].legend(loc="upper right")
     return fig
 
 
@@ -357,7 +376,7 @@ def plot_run(run_dir: Path, out: Path) -> list[Path]:
         f"Temperature-scaled, T = {scaled['temperature']:.2f}": scaled,
     }
     figures = {
-        "training-curves": lambda m: training_curves(history, m),
+        "training-curves": lambda m: training_curves({arch: history}, m),
         "confusion-matrix": lambda m: confusion_matrix(raw["confusion_matrix"], classes, m),
         "per-class-recall": lambda m: per_class_recall({arch: raw["per_class_recall"]}, m),
         "reliability": lambda m: reliability(conditions, m),
@@ -365,12 +384,41 @@ def plot_run(run_dir: Path, out: Path) -> list[Path]:
     return [path for name, draw in figures.items() for path in render(name, draw, out)]
 
 
+def plot_compare(run_dirs: list[Path], out: Path) -> list[Path]:
+    """Side-by-side figures for up to 3 runs, plus each run's own figures in ``out/<arch>``."""
+    runs = {}
+    for run_dir in run_dirs:
+        arch = json.loads((run_dir / "config.json").read_text())["arch"]
+        if arch in runs:
+            raise ValueError(f"two runs of {arch}; compare different models")
+        runs[arch] = run_dir
+    histories = {a: json.loads((d / "history.json").read_text()) for a, d in runs.items()}
+    recalls = {
+        a: json.loads((d / "test_report.json").read_text())["uncalibrated"]["per_class_recall"]
+        for a, d in runs.items()
+    }
+    figures = {
+        "training-curves": lambda m: training_curves(histories, m),
+        "per-class-recall": lambda m: per_class_recall(recalls, m),
+    }
+    paths = [path for name, draw in figures.items() for path in render(name, draw, out)]
+    for arch, run_dir in runs.items():
+        paths += plot_run(run_dir, out / arch)
+    return paths
+
+
 def main(argv: list[str] | None = None) -> None:
-    ap = argparse.ArgumentParser(description="Render the standard figures for a run.")
-    ap.add_argument("run_dir", type=Path)
-    ap.add_argument("--out", type=Path, help="default: <run_dir>/figures")
+    ap = argparse.ArgumentParser(description="Render the standard figures for one or more runs.")
+    ap.add_argument("run_dirs", type=Path, nargs="+", metavar="run_dir")
+    ap.add_argument("--out", type=Path, help="default: <run_dir>/figures (required for several)")
     a = ap.parse_args(argv)
-    for path in plot_run(a.run_dir, a.out or a.run_dir / "figures"):
+    if len(a.run_dirs) == 1:
+        paths = plot_run(a.run_dirs[0], a.out or a.run_dirs[0] / "figures")
+    elif a.out is None:
+        ap.error("--out is required when comparing several runs")
+    else:
+        paths = plot_compare(a.run_dirs, a.out)
+    for path in paths:
         print(f"wrote {path}")
 
 

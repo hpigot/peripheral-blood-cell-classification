@@ -4,8 +4,8 @@ Status: accepted
 
 ## Context
 
-Development runs on a CPU-only desktop, full training on a laptop with an
-RTX 4070, and CI on CPU-only Linux runners. PyPI's default torch wheel is
+Development runs on a CPU-only desktop, full training with CUDA on a
+laptop GPU, and CI on CPU-only Linux runners. PyPI's default torch wheel is
 not the right build for all three, and pip plus hand-written index URLs
 isn't reproducible.
 
