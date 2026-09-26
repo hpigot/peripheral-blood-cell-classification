@@ -61,11 +61,28 @@ def fit_temperature(logits: np.ndarray, y: np.ndarray) -> float:
     return float(min(fine, key=nll))
 
 
+def confused_pairs(cm: np.ndarray | list, classes: list[str], k: int = 5) -> list[dict]:
+    """The k largest off-diagonal cells, as true class, predicted class, count and share."""
+    counts = np.asarray(cm)
+    pairs = [
+        {
+            "true": classes[i],
+            "predicted": classes[j],
+            "count": int(counts[i, j]),
+            "share_of_true": float(counts[i, j] / counts[i].sum()),
+        }
+        for i, j in zip(*np.nonzero(counts), strict=True)
+        if i != j
+    ]
+    return sorted(pairs, key=lambda p: (-p["count"], p["true"], p["predicted"]))[:k]
+
+
 def report(logits: np.ndarray, y: np.ndarray, classes: list[str], temperature: float = 1.0) -> dict:
     probs = softmax(logits, temperature)
     pred = probs.argmax(axis=1)
     labels = list(range(len(classes)))
     recall = recall_score(y, pred, labels=labels, average=None, zero_division=0)
+    cm = confusion_matrix(y, pred, labels=labels)
     return {
         "n": len(y),
         "accuracy": float(accuracy_score(y, pred)),
@@ -74,6 +91,7 @@ def report(logits: np.ndarray, y: np.ndarray, classes: list[str], temperature: f
         "ece": expected_calibration_error(probs, y),
         "temperature": float(temperature),
         "per_class_recall": dict(zip(classes, map(float, recall), strict=True)),
-        "confusion_matrix": confusion_matrix(y, pred, labels=labels).tolist(),
+        "confusion_matrix": cm.tolist(),
+        "confused_pairs": confused_pairs(cm, classes),
         "reliability": reliability_bins(probs, y),
     }

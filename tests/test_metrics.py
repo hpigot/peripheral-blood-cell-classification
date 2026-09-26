@@ -1,6 +1,7 @@
 import numpy as np
 
 from bloodcell.metrics import (
+    confused_pairs,
     expected_calibration_error,
     fit_temperature,
     reliability_bins,
@@ -62,3 +63,13 @@ def test_report_includes_reliability_bins():
     assert r["reliability"] and {"lo", "hi", "confidence", "accuracy", "count"} <= set(
         r["reliability"][0]
     )
+
+
+def test_confused_pairs_ranks_off_diagonal_cells():
+    cm = [[10, 3, 0], [1, 8, 5], [0, 0, 9]]
+    pairs = confused_pairs(cm, ["a", "b", "c"], k=2)
+    assert [(p["true"], p["predicted"], p["count"]) for p in pairs] == [
+        ("b", "c", 5),
+        ("a", "b", 3),
+    ]
+    assert pairs[0]["share_of_true"] == 5 / 14
