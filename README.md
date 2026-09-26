@@ -48,6 +48,10 @@ licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). 17,092
 images of normal cells in 8 classes, acquired with a CellaVision DM96 at the
 Hospital Clinic of Barcelona.
 
+Before splitting, 16 byte-identical duplicates are removed, plus both copies
+of one image labelled as both eosinophil and neutrophil, leaving 17,074
+images ([ADR 0004](docs/decisions/0004-deduplicate-before-splitting.md)).
+
 This repository does not redistribute the images. `data/splits.csv` lists
 the dataset's file names and class labels unchanged, plus the split each
 image was assigned to.
