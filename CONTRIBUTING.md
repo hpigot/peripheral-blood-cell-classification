@@ -6,7 +6,7 @@ change is reviewable, tested and traceable to an issue.
 ## Setup
 
 ```bash
-uv sync --extra cpu --extra export   # or --extra cu126 on a CUDA machine
+uv sync --extra cpu --extra export --extra viz   # or cu126 instead of cpu
 uv run pre-commit install
 ```
 

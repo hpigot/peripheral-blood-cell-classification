@@ -20,7 +20,7 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-      - run: uv sync --locked --extra cpu --extra export
+      - run: uv sync --locked --extra cpu --extra export --extra viz
       # gitleaks has its own job below, which scans the full history
       - run: uv run pre-commit run --all-files --show-diff-on-failure
         env:
@@ -47,7 +47,7 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-      - run: uv sync --locked --extra cpu --extra export
+      - run: uv sync --locked --extra cpu --extra export --extra viz
       - run: uv run pytest --cov --cov-report=term-missing
 
   edge-cpp:

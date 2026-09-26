@@ -6,7 +6,7 @@ in CONTRIBUTING.md. Follow them.
 
 ## Commands
 
-- Setup: `uv sync --extra cpu --extra export`
+- Setup: `uv sync --extra cpu --extra export --extra viz`
 - Before every commit: `uv run pre-commit run --all-files`, `uv run mypy`,
   `uv run pytest`
 - Add dependencies with `uv add`, never pip, so `uv.lock` stays in sync.
@@ -26,6 +26,12 @@ in CONTRIBUTING.md. Follow them.
 - The split is image-level because the PBC dataset has no patient IDs. Don't
   describe internal test scores as generalization. External validation is
   separate work.
+
+## Figures
+
+- Every result figure comes from `src/bloodcell/plots.py` and follows
+  docs/figures/STYLE.md: at most 3 coloured series, colour fixed per model,
+  and light and dark variants. Add a new plot type there, not in a notebook.
 
 ## Tests
 
