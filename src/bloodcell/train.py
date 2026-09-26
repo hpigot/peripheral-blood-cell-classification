@@ -66,7 +66,9 @@ def main(argv: list[str] | None = None) -> None:
         persistent_workers=a.workers > 0,
         pin_memory=device.type == "cuda",
     )
-    train_dl = loader(train_ds, shuffle=True)
+    # Shuffling and each worker's augmentation seed come from their own generator,
+    # so the data a run sees doesn't depend on how model setup used the global RNG.
+    train_dl = loader(train_ds, shuffle=True, generator=torch.Generator().manual_seed(a.seed))
     val_dl = loader(val_ds, shuffle=False)
 
     model = build_model(a.arch, len(classes), pretrained=a.pretrained).to(device)

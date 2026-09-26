@@ -45,3 +45,23 @@ def test_train_then_evaluate_writes_run_artifacts(tmp_path):
     assert set(report) == {"uncalibrated", "temperature_scaled", "provenance"}
     assert report["uncalibrated"]["n"] == 4
     assert report["provenance"]["splits_sha256"] == config["provenance"]["splits_sha256"]
+
+
+def test_same_seed_gives_same_history(tmp_path):
+    root = tmp_path / "images"
+    make_dataset(root)
+    splits_csv = tmp_path / "splits.csv"
+    write_splits(stratified_split(discover(root), seed=0), splits_csv, root)
+
+    histories = []
+    for name in ("first", "second"):
+        train.main(
+            ["--root", str(root), "--splits", str(splits_csv), "--arch", "mobilenet_v3_small",
+             "--no-pretrained", "--epochs", "2", "--batch-size", "4", "--workers", "0",
+             "--out", str(tmp_path / name)]
+        )  # fmt: skip
+        (run_dir,) = (tmp_path / name).iterdir()
+        history = json.loads((run_dir / "history.json").read_text())
+        histories.append([{k: v for k, v in h.items() if k != "seconds"} for h in history])
+    # exact equality: losses are floats, so any change in data order or augmentation shows
+    assert histories[0] == histories[1]
