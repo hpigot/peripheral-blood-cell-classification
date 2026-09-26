@@ -111,9 +111,57 @@ still helps. Sending every image below 90% confidence to a person would
 catch 14 of MobileNet's 31 errors. It would flag 41 images in all (1.6% of
 the test set), 27 of them correct.
 
-These are internal scores. The split is image-level, and every image comes
-from one lab and one analyser (see the limitation under Dataset), so they
-say little about performance at another site.
+### External validation
+
+Everything above is an internal score: the split is image-level, and every
+image comes from one lab and one analyser. To see what survives a change
+of lab, the same checkpoints were scored, without retraining, on
+[Raabin-WBC](https://www.nature.com/articles/s41598-021-04426-x) Test-A:
+4,339 cells labelled by two experts, from a lab in Iran, with a different
+microscope, camera and stain. It has five of PBC's eight classes. Setup:
+[data/README.md](data/README.md).
+
+| Model | PBC test | Raabin, forced choice of 5 | Raabin, all 8 classes | Raabin ECE, raw → T-scaled |
+|---|--:|--:|--:|--:|
+| mobilenet_v3_small | 98.9% | 53.0% | 38.5% | 8.2% → 16.0% |
+| efficientnet_b0 | 99.3% | 63.5% | 56.5% | 12.1% → 19.7% |
+
+Balanced accuracy; chance is 20%. "Forced choice" picks among the five
+classes Raabin has, which isolates the change of lab. "All 8 classes" is
+the model as it would run, where calling a Raabin cell an immature
+granulocyte, erythroblast or platelet counts as wrong. MobileNet does that
+for 25% of the cells, and EfficientNet for 12%.
+
+- **The internal score says almost nothing about another lab.** Both models
+  lose 40–60 points of balanced accuracy.
+- **The internal tie hides a real difference.** EfficientNet-B0 holds up far
+  better (56.5% against 38.5%), even though the two models are within ten
+  test images of each other on PBC. This is one seed per model, but the gap
+  is much larger than anything seen internally.
+- **The errors look like a stain shortcut.** Raabin's stain is pinker, and
+  MobileNet calls 54% of Raabin's monocytes and 24% of its neutrophils
+  eosinophils, the cell type identified by pink-orange granules. The images
+  also differ in scale (575 px crops at a different magnification, against
+  PBC's 360 px), and both are resized to 224 px.
+- **Calibration doesn't transfer.** The temperature fitted on PBC makes the
+  models more confident, which is wrong once accuracy falls: ECE on Raabin
+  roughly doubles. A confidence threshold tuned on PBC can't be trusted on
+  another lab's images.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/external-recall-dark.png">
+  <img alt="Recall by class on Raabin-WBC for both models. EfficientNet-B0: monocyte 85%, lymphocyte 74%, neutrophil 59%, eosinophil 37%, basophil 27%. MobileNetV3-Small: eosinophil 79%, neutrophil 60%, lymphocyte 37%, monocyte 12%, basophil 5%." src="docs/figures/external-recall.png" width="640">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/mobilenet_v3_small/external-reliability-dark.png">
+  <img alt="MobileNetV3-Small reliability, temperature-scaled: close to the diagonal on PBC test (ECE 0.6%), but well below it on Raabin-WBC at high confidence, where cells predicted with 98% confidence are right about 76% of the time (ECE 16.0%)." src="docs/figures/mobilenet_v3_small/external-reliability.png" width="480">
+</picture>
+
+Caveats: Test-A was imaged on the same equipment as Raabin's own training
+set. Test-B, from a different microscope, isn't in the copy we used. The
+mapping from Raabin's numeric labels to class names is inferred from the
+class counts in its paper and checked by eye.
 
 ## Dataset
 
@@ -134,8 +182,8 @@ the dataset's file names and class labels unchanged, plus the split each
 image was assigned to.
 
 **Limitation:** the dataset has no patient or smear IDs, so the split is
-image-level and internal test scores are likely optimistic. External
-validation on a second dataset (Raabin-WBC) is planned.
+image-level and internal test scores are likely optimistic. See External
+validation for how much they drop on another lab's images.
 
 ## Development
 
