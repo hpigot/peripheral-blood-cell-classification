@@ -8,6 +8,7 @@ dicts, history lists) and never touch torch.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -20,6 +21,7 @@ from matplotlib import rc_context
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator, PercentFormatter
+from PIL import Image
 
 MODES = ("light", "dark")
 
@@ -79,6 +81,9 @@ CLASS_NAMES = {
 LINE_W = 2.0
 DOT_SIZE = 64  # points^2, about 8 px across at 100 dpi
 DPI = 200
+# Photo tiles barely compress as PNG. At this DPI a tile is about 220 px wide,
+# enough to see the nucleus, and the file is under half the size.
+PHOTO_DPI = 120
 
 
 def model_color(arch: str, mode: str) -> str:
@@ -350,22 +355,59 @@ def training_curves(histories: dict[str, list[dict]], mode: str) -> Figure:
     return fig
 
 
+def misclassified(predictions: list[dict], root: Path, mode: str, n: int = 12) -> Figure:
+    """The n most confident mistakes as image tiles, labelled true -> predicted."""
+    wrong = [r for r in predictions if r["label"] != r["predicted"]]
+    wrong.sort(key=lambda r: -float(r["confidence"]))
+    wrong = wrong[:n]
+    cols = 4
+    rows = max(1, -(-len(wrong) // cols))
+    with style(mode) as p:
+        fig = Figure(figsize=(7.2, 2.1 * rows + 0.5), layout="constrained")
+        axes = fig.subplots(rows, cols, squeeze=False)
+        for ax in axes.flat:
+            ax.set_axis_off()
+        for ax, r in zip(axes.flat, wrong, strict=False):
+            ax.imshow(Image.open(root / r["path"]).convert("RGB"))
+            true, pred = (CLASS_NAMES.get(c, c) for c in (r["label"], r["predicted"]))
+            ax.set_title(
+                f"{true}\n→ {pred} · {float(r['confidence']):.0%}",
+                loc="center",
+                fontsize=8,
+                color=p.ink2,
+            )
+        if not wrong:
+            axes[0, 0].text(0, 0.5, "No mistakes on the test set", color=p.ink2)
+        fig.suptitle(
+            "Most confident mistakes (test set; true class, then prediction and confidence)",
+            x=0.01,
+            ha="left",
+            fontsize=12,
+            color=p.ink,
+        )
+    return fig
+
+
 # --- rendering -----------------------------------------------------------------------
 
 
-def render(name: str, draw: Callable[[str], Figure], out: Path) -> list[Path]:
+def render(name: str, draw: Callable[[str], Figure], out: Path, dpi: int = DPI) -> list[Path]:
     """Write ``<name>.png`` (light) and ``<name>-dark.png``."""
     out.mkdir(parents=True, exist_ok=True)
     paths = []
     for mode in MODES:
         path = out / (f"{name}.png" if mode == "light" else f"{name}-{mode}.png")
-        draw(mode).savefig(path, dpi=DPI)
+        draw(mode).savefig(path, dpi=dpi)
         paths.append(path)
     return paths
 
 
-def plot_run(run_dir: Path, out: Path) -> list[Path]:
-    """Standard figures for one training run (needs history.json and test_report.json)."""
+def plot_run(run_dir: Path, out: Path, root: Path | None = None) -> list[Path]:
+    """Standard figures for one training run (needs history.json and test_report.json).
+
+    With ``root`` (the image folder) and the run's test_predictions.csv, it also
+    draws the most confident mistakes.
+    """
     history = json.loads((run_dir / "history.json").read_text())
     reports = json.loads((run_dir / "test_report.json").read_text())
     arch = json.loads((run_dir / "config.json").read_text())["arch"]
@@ -381,10 +423,19 @@ def plot_run(run_dir: Path, out: Path) -> list[Path]:
         "per-class-recall": lambda m: per_class_recall({arch: raw["per_class_recall"]}, m),
         "reliability": lambda m: reliability(conditions, m),
     }
-    return [path for name, draw in figures.items() for path in render(name, draw, out)]
+    predictions_csv = run_dir / "test_predictions.csv"
+    if root is not None and predictions_csv.is_file():
+        with open(predictions_csv, newline="") as f:
+            predictions = list(csv.DictReader(f))
+        figures["misclassified"] = lambda m: misclassified(predictions, root, m)
+    return [
+        path
+        for name, draw in figures.items()
+        for path in render(name, draw, out, PHOTO_DPI if name == "misclassified" else DPI)
+    ]
 
 
-def plot_compare(run_dirs: list[Path], out: Path) -> list[Path]:
+def plot_compare(run_dirs: list[Path], out: Path, root: Path | None = None) -> list[Path]:
     """Side-by-side figures for up to 3 runs, plus each run's own figures in ``out/<arch>``."""
     runs = {}
     for run_dir in run_dirs:
@@ -403,7 +454,7 @@ def plot_compare(run_dirs: list[Path], out: Path) -> list[Path]:
     }
     paths = [path for name, draw in figures.items() for path in render(name, draw, out)]
     for arch, run_dir in runs.items():
-        paths += plot_run(run_dir, out / arch)
+        paths += plot_run(run_dir, out / arch, root)
     return paths
 
 
@@ -411,13 +462,20 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="Render the standard figures for one or more runs.")
     ap.add_argument("run_dirs", type=Path, nargs="+", metavar="run_dir")
     ap.add_argument("--out", type=Path, help="default: <run_dir>/figures (required for several)")
+    ap.add_argument(
+        "--root",
+        type=Path,
+        default=Path("data/PBC_dataset_normal_DIB"),
+        help="image folder, for the mistakes figure (skipped if it doesn't exist)",
+    )
     a = ap.parse_args(argv)
+    root = a.root if a.root.is_dir() else None
     if len(a.run_dirs) == 1:
-        paths = plot_run(a.run_dirs[0], a.out or a.run_dirs[0] / "figures")
+        paths = plot_run(a.run_dirs[0], a.out or a.run_dirs[0] / "figures", root)
     elif a.out is None:
         ap.error("--out is required when comparing several runs")
     else:
-        paths = plot_compare(a.run_dirs, a.out)
+        paths = plot_compare(a.run_dirs, a.out, root)
     for path in paths:
         print(f"wrote {path}")
 
