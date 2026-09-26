@@ -29,6 +29,16 @@ def build_model(arch: str, num_classes: int, pretrained: bool = True):
     return m
 
 
+def load_checkpoint(path, device):
+    """The model (eval mode, on ``device``) and class names from a bloodcell-train checkpoint."""
+    import torch
+
+    ckpt = torch.load(path, map_location="cpu")
+    model = build_model(ckpt["arch"], len(ckpt["classes"]), pretrained=False)
+    model.load_state_dict(ckpt["state_dict"])
+    return model.to(device).eval(), ckpt["classes"]
+
+
 def transforms(train: bool):
     from torchvision import transforms as T
 

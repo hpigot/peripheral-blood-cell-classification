@@ -10,13 +10,12 @@ from pathlib import Path
 from .data import read_splits
 from .dataset import CellDataset
 from .metrics import fit_temperature, report, softmax
-from .model import build_model, pick_device, transforms
+from .model import load_checkpoint, pick_device, transforms
 from .provenance import device_name, provenance
 from .train import predict_logits
 
 
 def main(argv: list[str] | None = None) -> None:
-    import torch
     from torch.utils.data import DataLoader
 
     ap = argparse.ArgumentParser(description="Evaluate a trained checkpoint.")
@@ -27,11 +26,7 @@ def main(argv: list[str] | None = None) -> None:
     a = ap.parse_args(argv)
 
     device = pick_device()
-    ckpt = torch.load(a.checkpoint, map_location="cpu")
-    classes = ckpt["classes"]
-    model = build_model(ckpt["arch"], len(classes), pretrained=False)
-    model.load_state_dict(ckpt["state_dict"])
-    model.to(device)
+    model, classes = load_checkpoint(a.checkpoint, device)
 
     splits = read_splits(a.splits, a.root)
     tf = transforms(train=False)
