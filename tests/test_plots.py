@@ -48,6 +48,27 @@ def test_plot_run_writes_light_and_dark_variants(tmp_path):
     assert dark.getpixel((0, 0)) == (0x1A, 0x1A, 0x19)
 
 
+def test_plot_run_draws_mistakes_when_images_are_available(tmp_path):
+    make_run(tmp_path / "run")
+    root = tmp_path / "images"
+    (root / "ig").mkdir(parents=True)
+    rows = ["path,label,predicted,confidence"]
+    for i in range(3):
+        Image.new("RGB", (36, 36), (200, 120 + 40 * i, 200)).save(root / "ig" / f"{i}.png")
+        rows.append(f"ig/{i}.png,ig,{'neutrophil' if i else 'ig'},0.9{i}")
+    (tmp_path / "run" / "test_predictions.csv").write_text("\n".join(rows) + "\n")
+    names = {p.name for p in plots.plot_run(tmp_path / "run", tmp_path / "figs", root)}
+    assert {"misclassified.png", "misclassified-dark.png"} <= names
+    # without the image folder the figure is skipped, not an error
+    names = {p.name for p in plots.plot_run(tmp_path / "run", tmp_path / "figs2")}
+    assert "misclassified.png" not in names
+
+
+def test_mistakes_figure_handles_a_perfect_run(tmp_path):
+    rows = [{"path": "x.png", "label": "ig", "predicted": "ig", "confidence": "0.99"}]
+    plots.misclassified(rows, tmp_path, "light")
+
+
 def test_plot_compare_writes_comparison_and_per_run_figures(tmp_path):
     make_run(tmp_path / "a")
     make_run(tmp_path / "b", arch="efficientnet_b0")
