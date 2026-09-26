@@ -82,6 +82,35 @@ MobileNetV3-Small in detail:
   <img alt="MobileNetV3-Small reliability diagram: temperature scaling (T = 0.61) cuts ECE from 4.4% to 0.6%. Most test images sit in the top confidence bin; the lower bins hold only a few images each, so their points are noisy." src="docs/figures/mobilenet_v3_small/reliability.png" width="480">
 </picture>
 
+### Error analysis
+
+Most mistakes sit on one boundary. The PBC file names carry the dataset's
+sub-types, and they show where the errors come from:
+
+| Model | Errors | Metamyelocyte (IG) → neutrophil | Band neutrophil → IG | Everything else |
+|---|--:|--:|--:|--:|
+| mobilenet_v3_small | 31 | 14 of 148 | 4 of 254 | 13 |
+| efficientnet_b0 | 21 | 5 of 148 | 8 of 254 | 8 |
+
+A metamyelocyte and a band neutrophil are neighbouring stages of neutrophil
+maturation, told apart by how deeply the nucleus is indented. PBC puts the
+class boundary between them, so the models are asked to draw a line that
+morphologists also find hard to draw. The two models place it differently:
+MobileNet tends to call metamyelocytes neutrophils, and EfficientNet tends
+to call band neutrophils IG. No segmented neutrophil was misclassified by
+either model. 12 test images are wrong for both.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/mobilenet_v3_small/misclassified-dark.png">
+  <img alt="MobileNetV3-Small's 12 most confident test mistakes. Eight are immature granulocytes and band neutrophils swapped with each other, mostly cells with a kidney- or band-shaped nucleus; one tile shows two cells in the same image." src="docs/figures/mobilenet_v3_small/misclassified.png" width="720">
+</picture>
+
+The worst mistakes are made with 97–100% confidence, so calibration doesn't
+flag them: it is right on average, not image by image. A review threshold
+still helps. Sending every image below 90% confidence to a person would
+catch 14 of MobileNet's 31 errors. It would flag 41 images in all (1.6% of
+the test set), 27 of them correct.
+
 These are internal scores. The split is image-level, and every image comes
 from one lab and one analyser (see the limitation under Dataset), so they
 say little about performance at another site.
