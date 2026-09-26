@@ -199,10 +199,12 @@ def per_class_recall(recalls: dict[str, dict[str, float]], mode: str) -> Figure:
         ax = fig.subplots()
         ax.grid(axis="y")
         ax.set_axisbelow(True)
-        for arch, rec in recalls.items():
+        for k, (arch, rec) in enumerate(recalls.items()):
+            # nudge each model off the row line so equal scores don't hide each other
+            offset = (k - (len(recalls) - 1) / 2) * 0.2
             ax.scatter(
                 [rec[c] for c in classes],
-                range(len(classes)),
+                [i + offset for i in range(len(classes))],
                 s=DOT_SIZE,
                 color=model_color(arch, mode),
                 edgecolors=p.surface,
@@ -219,7 +221,8 @@ def per_class_recall(recalls: dict[str, dict[str, float]], mode: str) -> Figure:
         ax.set_xlabel("Recall (test set)")
         ax.set_title("Recall by class")
         if len(recalls) > 1:
-            ax.legend(loc="lower right")
+            # the best classes sit at the top right, so the top left stays empty
+            ax.legend(loc="upper left")
         else:
             ax.set_title(f"Recall by class · {next(iter(recalls))}")
     return fig
