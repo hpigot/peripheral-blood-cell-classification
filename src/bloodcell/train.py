@@ -102,12 +102,13 @@ def main(argv: list[str] | None = None) -> None:
                 "epoch": epoch,
                 "train_loss": total / len(train_ds),
                 **{k: r[k] for k in ("accuracy", "balanced_accuracy", "macro_f1", "ece")},
+                "seconds": round(time.time() - t0, 1),  # training plus validation
             }
         )
         print(
             f"epoch {epoch:2d}  loss {history[-1]['train_loss']:.4f}  "
             f"val bal-acc {r['balanced_accuracy']:.4f}  ece {r['ece']:.4f}  "
-            f"({time.time() - t0:.0f}s)"
+            f"({history[-1]['seconds']:.0f}s)"
         )
         # rewritten every epoch so an interrupted run keeps its curve
         (run_dir / "history.json").write_text(json.dumps(history, indent=2))
