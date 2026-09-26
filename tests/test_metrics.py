@@ -1,6 +1,12 @@
 import numpy as np
 
-from bloodcell.metrics import expected_calibration_error, fit_temperature, report, softmax
+from bloodcell.metrics import (
+    expected_calibration_error,
+    fit_temperature,
+    reliability_bins,
+    report,
+    softmax,
+)
 
 
 def test_softmax_rows_sum_to_one():
@@ -38,3 +44,21 @@ def test_report_keys_and_confusion_shape():
     assert r["accuracy"] == 2 / 3
     assert r["confusion_matrix"] == [[1, 0], [1, 1]]
     assert set(r["per_class_recall"]) == {"a", "b"}
+
+
+def test_reliability_bins_match_ece():
+    rng = np.random.default_rng(1)
+    probs = softmax(rng.normal(size=(500, 4)) * 3)
+    y = rng.integers(0, 4, 500)
+    bins = reliability_bins(probs, y, n_bins=10)
+    assert sum(b["count"] for b in bins) == 500
+    ece = sum(b["count"] / 500 * abs(b["accuracy"] - b["confidence"]) for b in bins)
+    assert abs(ece - expected_calibration_error(probs, y, n_bins=10)) < 1e-12
+    assert all(b["lo"] < b["confidence"] <= b["hi"] for b in bins)
+
+
+def test_report_includes_reliability_bins():
+    r = report(np.array([[2.0, 0.0], [0.0, 2.0]]), np.array([0, 1]), ["a", "b"])
+    assert r["reliability"] and {"lo", "hi", "confidence", "accuracy", "count"} <= set(
+        r["reliability"][0]
+    )

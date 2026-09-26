@@ -21,17 +21,31 @@ def softmax(logits: np.ndarray, temperature: float = 1.0) -> np.ndarray:
     return e / e.sum(axis=1, keepdims=True)
 
 
-def expected_calibration_error(probs: np.ndarray, y: np.ndarray, n_bins: int = 15) -> float:
-    """Top-label ECE with equal-width confidence bins."""
+def reliability_bins(probs: np.ndarray, y: np.ndarray, n_bins: int = 15) -> list[dict]:
+    """Top-label confidence vs accuracy in equal-width bins (non-empty bins only)."""
     conf = probs.max(axis=1)
     correct = (probs.argmax(axis=1) == y).astype(float)
     edges = np.linspace(0.0, 1.0, n_bins + 1)
-    ece = 0.0
+    bins = []
     for lo, hi in itertools.pairwise(edges):
         mask = (conf > lo) & (conf <= hi)
         if mask.any():
-            ece += mask.mean() * abs(correct[mask].mean() - conf[mask].mean())
-    return float(ece)
+            bins.append(
+                {
+                    "lo": float(lo),
+                    "hi": float(hi),
+                    "confidence": float(conf[mask].mean()),
+                    "accuracy": float(correct[mask].mean()),
+                    "count": int(mask.sum()),
+                }
+            )
+    return bins
+
+
+def expected_calibration_error(probs: np.ndarray, y: np.ndarray, n_bins: int = 15) -> float:
+    """Top-label ECE: count-weighted |accuracy - confidence| over the reliability bins."""
+    bins = reliability_bins(probs, y, n_bins)
+    return float(sum(b["count"] * abs(b["accuracy"] - b["confidence"]) for b in bins) / len(y))
 
 
 def fit_temperature(logits: np.ndarray, y: np.ndarray) -> float:
@@ -61,4 +75,5 @@ def report(logits: np.ndarray, y: np.ndarray, classes: list[str], temperature: f
         "temperature": float(temperature),
         "per_class_recall": dict(zip(classes, map(float, recall), strict=True)),
         "confusion_matrix": confusion_matrix(y, pred, labels=labels).tolist(),
+        "reliability": reliability_bins(probs, y),
     }
