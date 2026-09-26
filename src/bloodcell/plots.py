@@ -238,15 +238,15 @@ def reliability(conditions: dict[str, dict], mode: str) -> Figure:
         fig = Figure(figsize=(6.4, 6.4), layout="constrained")
         top, bottom = fig.subplots(2, 1, sharex=True, height_ratios=(3, 1))
         top.plot([0, 1], [0, 1], color=p.axis, lw=1, zorder=1)
-        top.text(
-            0.97,
-            0.9,
+        # low confidence is where bins are sparse, so the label stays clear of the curves
+        top.annotate(
             "perfectly calibrated",
+            (0.2, 0.2),
+            xytext=(6, -4),
+            textcoords="offset points",
             color=p.muted,
             fontsize=8,
-            ha="right",
-            rotation=45,
-            rotation_mode="anchor",
+            va="top",
         )
         colors = (p.muted, p.series[0])
         for k, ((label, r), color) in enumerate(zip(conditions.items(), colors, strict=False)):
