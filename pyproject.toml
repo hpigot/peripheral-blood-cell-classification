@@ -21,12 +21,14 @@ dependencies = [
 cpu = ["torch>=2.6", "torchvision>=0.21"]
 cu126 = ["torch>=2.6", "torchvision>=0.21"]
 export = ["onnx>=1.17", "onnxruntime>=1.20", "onnxscript>=0.3"]
+viz = ["matplotlib>=3.9", "seaborn>=0.13"]
 
 [project.scripts]
 bloodcell-split = "bloodcell.data:main"
 bloodcell-train = "bloodcell.train:main"
 bloodcell-eval = "bloodcell.evaluate:main"
 bloodcell-export = "bloodcell.export:main"
+bloodcell-plot = "bloodcell.plots:main"
 
 [dependency-groups]
 dev = [
@@ -81,5 +83,5 @@ warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 # these ship no type information
-module = ["onnxruntime", "sklearn", "sklearn.*", "torchvision", "torchvision.*"]
+module = ["onnxruntime", "seaborn", "sklearn", "sklearn.*", "torchvision", "torchvision.*"]
 ignore_missing_imports = true

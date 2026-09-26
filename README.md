@@ -19,7 +19,7 @@ Needs [uv](https://docs.astral.sh/uv/). It installs Python 3.12 from
 `.python-version` if missing.
 
 ```bash
-uv sync --extra cpu --extra export   # --extra cu126 instead of cpu for an NVIDIA GPU
+uv sync --extra cpu --extra export --extra viz   # cu126 instead of cpu for an NVIDIA GPU
 uv run pytest                        # synthetic-data tests, no download
 
 # after unzipping the dataset into data/ (see data/README.md)
@@ -27,6 +27,7 @@ uv run bloodcell-split
 uv run bloodcell-train --arch mobilenet_v3_small --epochs 15
 uv run bloodcell-eval runs/<run>/best.pt
 uv run bloodcell-export runs/<run>/best.pt   # -> best.onnx + best.json
+uv run bloodcell-plot runs/<run>             # figures, see docs/figures/STYLE.md
 ```
 
 Edge build: [edge/README.md](edge/README.md).
