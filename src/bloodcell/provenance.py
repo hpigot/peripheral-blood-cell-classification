@@ -38,14 +38,14 @@ def file_sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def provenance(splits: Path, device: str) -> dict:
+def provenance(splits: Path | None, device: str) -> dict:
     """Enough to rerun a result: commit, uncommitted changes, split file, versions."""
     status = _git("status", "--porcelain", "--untracked-files=no")
     return {
         "git_sha": _git("rev-parse", "HEAD"),
         # tracked files changed but not committed: the SHA alone doesn't describe the code
         "git_dirty": None if status is None else bool(status),
-        "splits_sha256": file_sha256(splits),
+        "splits_sha256": file_sha256(splits) if splits else None,
         "python": platform.python_version(),
         "platform": platform.platform(),
         "packages": {p: _version(p) for p in PACKAGES},
