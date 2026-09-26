@@ -1,9 +1,10 @@
+import random
 from collections import Counter
 from pathlib import Path
 
 from PIL import Image
 
-from bloodcell.data import discover, read_splits, stratified_split, write_splits
+from bloodcell.data import clean, discover, read_splits, stratified_split, write_splits
 
 
 def make_tree(root: Path, counts: dict[str, int]) -> None:
@@ -11,7 +12,9 @@ def make_tree(root: Path, counts: dict[str, int]) -> None:
         d = root / cls
         d.mkdir(parents=True)
         for i in range(n):
-            Image.new("RGB", (8, 8), (i % 255, 0, 0)).save(d / f"{cls}_{i}.jpg")
+            # seeded noise, so every image is unique even after JPEG compression
+            noise = random.Random(f"{cls}/{i}").randbytes(8 * 8 * 3)
+            Image.frombytes("RGB", (8, 8), noise).save(d / f"{cls}_{i}.jpg")
     (root / "neutrophil" / "notes.txt").write_text("not an image")
 
 
@@ -42,3 +45,40 @@ def test_split_csv_roundtrip(tmp_path):
     back = read_splits(tmp_path / "splits.csv", root)
     for k in splits:
         assert [s.path for s in back[k]] == [s.path for s in splits[k]]
+
+
+def test_discover_skips_hidden_files(tmp_path):
+    make_tree(tmp_path, {"neutrophil": 2})
+    (tmp_path / "neutrophil" / ".DS_1.jpg").write_bytes(b"Bud1 (macOS folder metadata)")
+    assert [s.path.name for s in discover(tmp_path)] == ["neutrophil_0.jpg", "neutrophil_1.jpg"]
+
+
+def test_clean_keeps_first_copy_of_same_class_duplicates(tmp_path):
+    make_tree(tmp_path, {"neutrophil": 2})
+    d = tmp_path / "neutrophil"
+    (d / "neutrophil_9.jpg").write_bytes((d / "neutrophil_0.jpg").read_bytes())
+    kept, dropped = clean(discover(tmp_path))
+    assert [s.path.name for s in kept] == ["neutrophil_0.jpg", "neutrophil_1.jpg"]
+    assert [(x.path.name, x.reason) for x in dropped] == [
+        ("neutrophil_9.jpg", "duplicate of neutrophil/neutrophil_0.jpg")
+    ]
+
+
+def test_clean_drops_every_copy_when_labels_conflict(tmp_path):
+    make_tree(tmp_path, {"neutrophil": 2, "eosinophil": 1})
+    src = tmp_path / "neutrophil" / "neutrophil_0.jpg"
+    (tmp_path / "eosinophil" / "eo_x.jpg").write_bytes(src.read_bytes())
+    kept, dropped = clean(discover(tmp_path))
+    assert {s.path.name for s in kept} == {"neutrophil_1.jpg", "eosinophil_0.jpg"}
+    assert sorted((x.path.name, x.reason) for x in dropped) == [
+        ("eo_x.jpg", "same image labelled eosinophil and neutrophil"),
+        ("neutrophil_0.jpg", "same image labelled eosinophil and neutrophil"),
+    ]
+
+
+def test_clean_drops_unreadable_images(tmp_path):
+    make_tree(tmp_path, {"neutrophil": 1})
+    (tmp_path / "neutrophil" / "broken.jpg").write_bytes(b"not a jpeg")
+    kept, dropped = clean(discover(tmp_path))
+    assert [s.path.name for s in kept] == ["neutrophil_0.jpg"]
+    assert [(x.path.name, x.reason) for x in dropped] == [("broken.jpg", "unreadable image")]
