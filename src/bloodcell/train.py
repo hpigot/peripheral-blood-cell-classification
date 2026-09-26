@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -55,8 +56,17 @@ def main(argv: list[str] | None = None) -> None:
     classes = class_names(splits)
     train_ds = CellDataset(splits["train"], classes, transforms(train=True))
     val_ds = CellDataset(splits["val"], classes, transforms(train=False))
-    train_dl = DataLoader(train_ds, a.batch_size, shuffle=True, num_workers=a.workers)
-    val_dl = DataLoader(val_ds, a.batch_size, shuffle=False, num_workers=a.workers)
+    # Keep workers alive between epochs: on Windows each new worker re-imports
+    # torch, which left the GPU idle at the start of every pass.
+    loader = partial(
+        DataLoader,
+        batch_size=a.batch_size,
+        num_workers=a.workers,
+        persistent_workers=a.workers > 0,
+        pin_memory=device.type == "cuda",
+    )
+    train_dl = loader(train_ds, shuffle=True)
+    val_dl = loader(val_ds, shuffle=False)
 
     model = build_model(a.arch, len(classes), pretrained=a.pretrained).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-4)
