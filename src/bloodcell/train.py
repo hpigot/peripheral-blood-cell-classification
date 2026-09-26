@@ -41,6 +41,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", type=Path, default=Path("runs"))
+    ap.add_argument(
+        "--no-pretrained",
+        dest="pretrained",
+        action="store_false",
+        help="start from random weights instead of downloading ImageNet ones",
+    )
     a = ap.parse_args(argv)
 
     torch.manual_seed(a.seed)
@@ -52,7 +58,7 @@ def main(argv: list[str] | None = None) -> None:
     train_dl = DataLoader(train_ds, a.batch_size, shuffle=True, num_workers=a.workers)
     val_dl = DataLoader(val_ds, a.batch_size, shuffle=False, num_workers=a.workers)
 
-    model = build_model(a.arch, len(classes)).to(device)
+    model = build_model(a.arch, len(classes), pretrained=a.pretrained).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(
         opt, max_lr=a.lr, epochs=a.epochs, steps_per_epoch=len(train_dl)
