@@ -193,43 +193,64 @@ def confusion_matrix(cm: list[list[int]], classes: list[str], mode: str) -> Figu
     return fig
 
 
-def per_class_recall(recalls: dict[str, dict[str, float]], mode: str) -> Figure:
+def per_class_recall(
+    recalls: dict[str, dict[str, float]], mode: str, title: str = "Recall by class"
+) -> Figure:
     """Dot plot of recall per class, one dot per model (at most 3 models)."""
     if len(recalls) > 3:
         raise ValueError("at most 3 models per figure; facet or split the comparison")
-    first = next(iter(recalls.values()))
+    series = [(arch, rec, model_color(arch, mode)) for arch, rec in recalls.items()]
+    if len(recalls) == 1:
+        title = f"{title} · {next(iter(recalls))}"
+    return _recall_dots(series, "Recall (test set)", title, mode)
+
+
+def recall_shift(conditions: dict[str, dict[str, float]], mode: str) -> Figure:
+    """Recall per class under two conditions: the reference muted, the other in blue."""
+    if len(conditions) != 2:
+        raise ValueError("a shift plot compares exactly 2 conditions")
+    p = PALETTES[mode]
+    series = [
+        (label, rec, color)
+        for (label, rec), color in zip(conditions.items(), (p.muted, p.series[0]), strict=True)
+    ]
+    return _recall_dots(series, "Recall", "Recall by class", mode)
+
+
+def _recall_dots(
+    series: list[tuple[str, dict[str, float], str]], xlabel: str, title: str, mode: str
+) -> Figure:
+    first = series[0][1]
     classes = sorted(first, key=first.__getitem__)  # weakest class at the bottom
     with style(mode) as p:
-        fig = Figure(figsize=(7.2, 4.2), layout="constrained")
+        fig = Figure(figsize=(7.2, 0.45 * len(classes) + 0.6), layout="constrained")
         ax = fig.subplots()
         ax.grid(axis="y")
         ax.set_axisbelow(True)
-        for k, (arch, rec) in enumerate(recalls.items()):
-            # nudge each model off the row line so equal scores don't hide each other
-            offset = (k - (len(recalls) - 1) / 2) * 0.2
+        for k, (label, rec, color) in enumerate(series):
+            # nudge each series off the row line so equal scores don't hide each other
+            offset = (k - (len(series) - 1) / 2) * 0.2
             ax.scatter(
                 [rec[c] for c in classes],
                 [i + offset for i in range(len(classes))],
                 s=DOT_SIZE,
-                color=model_color(arch, mode),
+                color=color,
                 edgecolors=p.surface,
                 linewidths=2,
                 zorder=3,
-                label=arch,
+                label=label,
             )
-        lo = min(min(r.values()) for r in recalls.values())
+        lo = min(min(rec.values()) for _, rec, _ in series)
         ax.set_xlim(max(0.0, lo - 0.03), 1.005)
         ax.xaxis.set_major_formatter(PercentFormatter(1, decimals=0))
         ax.set_yticks(range(len(classes)), [CLASS_NAMES.get(c, c) for c in classes])
         ax.tick_params(axis="y", length=0, labelcolor=p.ink2)
         ax.spines["left"].set_visible(False)
-        ax.set_xlabel("Recall (test set)")
-        ax.set_title("Recall by class")
-        if len(recalls) > 1:
-            # the best classes sit at the top right, so the top left stays empty
-            ax.legend(loc="upper left")
-        else:
-            ax.set_title(f"Recall by class · {next(iter(recalls))}")
+        ax.set_xlabel(xlabel)
+        ax.set_title(title)
+        if len(series) > 1:
+            # above the plot, so no dot can end up under it
+            fig.legend(loc="outside upper right", ncols=len(series))
     return fig
 
 
@@ -423,6 +444,20 @@ def plot_run(run_dir: Path, out: Path, root: Path | None = None) -> list[Path]:
         "per-class-recall": lambda m: per_class_recall({arch: raw["per_class_recall"]}, m),
         "reliability": lambda m: reliability(conditions, m),
     }
+    external_json = run_dir / "external_raabin.json"
+    if external_json.is_file():
+        ext = json.loads(external_json.read_text())
+        shared = list(ext["all_classes"]["per_class_recall"])
+        shift = {
+            "PBC test, internal": {c: raw["per_class_recall"][c] for c in shared},
+            "Raabin-WBC, external": ext["all_classes"]["per_class_recall"],
+        }
+        calibration = {
+            "PBC test, internal": scaled,
+            "Raabin-WBC, external": ext["forced_choice"]["temperature_scaled"],
+        }
+        figures["external-recall"] = lambda m: recall_shift(shift, m)
+        figures["external-reliability"] = lambda m: reliability(calibration, m)
     predictions_csv = run_dir / "test_predictions.csv"
     if root is not None and predictions_csv.is_file():
         with open(predictions_csv, newline="") as f:
@@ -452,6 +487,15 @@ def plot_compare(run_dirs: list[Path], out: Path, root: Path | None = None) -> l
         "training-curves": lambda m: training_curves(histories, m),
         "per-class-recall": lambda m: per_class_recall(recalls, m),
     }
+    external = {a: d / "external_raabin.json" for a, d in runs.items()}
+    if all(path.is_file() for path in external.values()):
+        ext_recalls = {
+            a: json.loads(path.read_text())["all_classes"]["per_class_recall"]
+            for a, path in external.items()
+        }
+        figures["external-recall"] = lambda m: per_class_recall(
+            ext_recalls, m, "Recall by class on Raabin-WBC (external)"
+        )
     paths = [path for name, draw in figures.items() for path in render(name, draw, out)]
     for arch, run_dir in runs.items():
         paths += plot_run(run_dir, out / arch, root)

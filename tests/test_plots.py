@@ -64,6 +64,19 @@ def test_plot_run_draws_mistakes_when_images_are_available(tmp_path):
     assert "misclassified.png" not in names
 
 
+def test_plot_run_adds_external_figures_when_scored(tmp_path):
+    from bloodcell.external import score_external
+
+    make_run(tmp_path / "run")
+    rng = np.random.default_rng(1)
+    labels = ["basophil", "neutrophil"] * 20
+    logits = rng.normal(size=(40, 3))
+    ext = score_external(logits, labels, CLASSES, temperature=1.2)
+    (tmp_path / "run" / "external_raabin.json").write_text(json.dumps(ext))
+    names = {p.name for p in plots.plot_run(tmp_path / "run", tmp_path / "figs")}
+    assert {"external-recall.png", "external-reliability-dark.png"} <= names
+
+
 def test_mistakes_figure_handles_a_perfect_run(tmp_path):
     rows = [{"path": "x.png", "label": "ig", "predicted": "ig", "confidence": "0.99"}]
     plots.misclassified(rows, tmp_path, "light")
@@ -105,5 +118,7 @@ def test_at_most_three_series_per_figure():
     with pytest.raises(ValueError, match="at most 3"):
         plots.per_class_recall({f"m{i}": rec for i in range(4)}, "light")
     history = [{"epoch": 1, "train_loss": 1.0, "balanced_accuracy": 0.9, "ece": 0.02}]
+    with pytest.raises(ValueError, match="exactly 2"):
+        plots.recall_shift({f"m{i}": rec for i in range(3)}, "light")
     with pytest.raises(ValueError, match="at most 3"):
         plots.training_curves({f"m{i}": history for i in range(4)}, "light")
