@@ -45,6 +45,9 @@ def test_train_then_evaluate_writes_run_artifacts(tmp_path):
     assert set(report) == {"uncalibrated", "temperature_scaled", "provenance"}
     assert report["uncalibrated"]["n"] == 4
     assert report["provenance"]["splits_sha256"] == config["provenance"]["splits_sha256"]
+    predictions = (run_dir / "test_predictions.csv").read_text().splitlines()
+    assert predictions[0] == "path,label,predicted,confidence"
+    assert len(predictions) == 1 + 4
 
 
 def test_same_seed_gives_same_history(tmp_path):

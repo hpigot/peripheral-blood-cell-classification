@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from pathlib import Path
 
 from .data import read_splits
 from .dataset import CellDataset
-from .metrics import fit_temperature, report
+from .metrics import fit_temperature, report, softmax
 from .model import build_model, pick_device, transforms
 from .provenance import device_name, provenance
 from .train import predict_logits
@@ -50,6 +51,17 @@ def main(argv: list[str] | None = None) -> None:
     }
     out = a.checkpoint.with_name("test_report.json")
     out.write_text(json.dumps(result, indent=2))
+
+    # one row per test image, for error analysis (bloodcell-plot draws the worst ones)
+    probs = softmax(test_logits, t)
+    with open(a.checkpoint.with_name("test_predictions.csv"), "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["path", "label", "predicted", "confidence"])
+        for s, row in zip(splits["test"], probs, strict=True):
+            top = int(row.argmax())
+            w.writerow(
+                [s.path.relative_to(a.root).as_posix(), s.label, classes[top], f"{row[top]:.4f}"]
+            )
     for k in ("uncalibrated", "temperature_scaled"):
         r = result[k]
         print(
