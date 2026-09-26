@@ -77,6 +77,9 @@ def main(argv: list[str] | None = None) -> None:
 
     run_dir = a.out / f"{a.arch}-{time.strftime('%Y%m%d-%H%M%S')}"
     run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "config.json").write_text(
+        json.dumps({k: str(v) for k, v in vars(a).items()}, indent=2)
+    )
     best, history = -1.0, []
     for epoch in range(1, a.epochs + 1):
         model.train()
@@ -103,6 +106,8 @@ def main(argv: list[str] | None = None) -> None:
             f"val bal-acc {r['balanced_accuracy']:.4f}  ece {r['ece']:.4f}  "
             f"({time.time() - t0:.0f}s)"
         )
+        # rewritten every epoch so an interrupted run keeps its curve
+        (run_dir / "history.json").write_text(json.dumps(history, indent=2))
         if r["balanced_accuracy"] > best:
             best = r["balanced_accuracy"]
             torch.save(
@@ -110,10 +115,6 @@ def main(argv: list[str] | None = None) -> None:
                 run_dir / "best.pt",
             )
 
-    (run_dir / "history.json").write_text(json.dumps(history, indent=2))
-    (run_dir / "config.json").write_text(
-        json.dumps({k: str(v) for k, v in vars(a).items()}, indent=2)
-    )
     print(f"best val balanced accuracy {best:.4f} -> {run_dir / 'best.pt'}")
 
 

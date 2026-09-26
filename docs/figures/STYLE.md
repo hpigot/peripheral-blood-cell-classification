@@ -8,7 +8,11 @@ treatment.
 ```bash
 uv run bloodcell-plot runs/<run>                    # -> runs/<run>/figures/
 uv run bloodcell-plot runs/<run> --out docs/figures # figures for the README
+uv run bloodcell-plot runs/<a> runs/<b> --out docs/figures
 ```
+
+Given several runs (one per model, at most 3), it draws the comparison
+figures in `--out` and each run's own set in `<out>/<arch>/`.
 
 ## Light and dark
 

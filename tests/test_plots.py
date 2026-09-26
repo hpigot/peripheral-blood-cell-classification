@@ -21,7 +21,7 @@ def fake_report(temperature: float = 1.0) -> dict:
     return report(logits, y, CLASSES, temperature)
 
 
-def make_run(run_dir):
+def make_run(run_dir, arch="mobilenet_v3_small"):
     run_dir.mkdir()
     history = [
         {"epoch": e, "train_loss": 1 / e, "balanced_accuracy": 0.9, "ece": 0.02} for e in (1, 2, 3)
@@ -29,7 +29,7 @@ def make_run(run_dir):
     reports = {"uncalibrated": fake_report(), "temperature_scaled": fake_report(1.5)}
     (run_dir / "history.json").write_text(json.dumps(history))
     (run_dir / "test_report.json").write_text(json.dumps(reports))
-    (run_dir / "config.json").write_text(json.dumps({"arch": "mobilenet_v3_small"}))
+    (run_dir / "config.json").write_text(json.dumps({"arch": arch}))
 
 
 def test_plot_run_writes_light_and_dark_variants(tmp_path):
@@ -46,6 +46,23 @@ def test_plot_run_writes_light_and_dark_variants(tmp_path):
     # the corner pixel is the chart surface of each mode
     assert light.getpixel((0, 0)) == (0xFC, 0xFC, 0xFB)
     assert dark.getpixel((0, 0)) == (0x1A, 0x1A, 0x19)
+
+
+def test_plot_compare_writes_comparison_and_per_run_figures(tmp_path):
+    make_run(tmp_path / "a")
+    make_run(tmp_path / "b", arch="efficientnet_b0")
+    paths = plots.plot_compare([tmp_path / "a", tmp_path / "b"], tmp_path / "figs")
+    rel = {p.relative_to(tmp_path / "figs").as_posix() for p in paths}
+    assert {"training-curves.png", "per-class-recall-dark.png"} <= rel
+    assert {"mobilenet_v3_small/reliability.png", "efficientnet_b0/confusion-matrix.png"} <= rel
+    assert len(rel) == 2 * 2 + 2 * 8
+
+
+def test_plot_compare_rejects_two_runs_of_one_model(tmp_path):
+    make_run(tmp_path / "a")
+    make_run(tmp_path / "b")
+    with pytest.raises(ValueError, match="two runs of mobilenet_v3_small"):
+        plots.plot_compare([tmp_path / "a", tmp_path / "b"], tmp_path / "figs")
 
 
 def test_style_does_not_leak_into_global_rcparams():
@@ -66,3 +83,6 @@ def test_at_most_three_series_per_figure():
     rec = {c: 0.9 for c in CLASSES}
     with pytest.raises(ValueError, match="at most 3"):
         plots.per_class_recall({f"m{i}": rec for i in range(4)}, "light")
+    history = [{"epoch": 1, "train_loss": 1.0, "balanced_accuracy": 0.9, "ece": 0.02}]
+    with pytest.raises(ValueError, match="at most 3"):
+        plots.training_curves({f"m{i}": history for i in range(4)}, "light")
