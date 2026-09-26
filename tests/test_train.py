@@ -36,8 +36,12 @@ def test_train_then_evaluate_writes_run_artifacts(tmp_path):
     history = json.loads((run_dir / "history.json").read_text())
     assert [h["epoch"] for h in history] == [1]
     assert (run_dir / "best.pt").is_file()
+    config = json.loads((run_dir / "config.json").read_text())
+    assert config["arch"] == "mobilenet_v3_small"
+    assert config["provenance"]["device"].startswith(("cpu", "cuda", "mps"))
 
     evaluate.main([str(run_dir / "best.pt"), *common])
     report = json.loads((run_dir / "test_report.json").read_text())
-    assert set(report) == {"uncalibrated", "temperature_scaled"}
+    assert set(report) == {"uncalibrated", "temperature_scaled", "provenance"}
     assert report["uncalibrated"]["n"] == 4
+    assert report["provenance"]["splits_sha256"] == config["provenance"]["splits_sha256"]

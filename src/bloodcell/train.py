@@ -14,6 +14,7 @@ from .data import class_names, read_splits
 from .dataset import CellDataset
 from .metrics import report
 from .model import ARCHS, build_model, pick_device, transforms
+from .provenance import device_name, provenance
 
 
 def predict_logits(model, loader, device) -> tuple[np.ndarray, np.ndarray]:
@@ -77,9 +78,11 @@ def main(argv: list[str] | None = None) -> None:
 
     run_dir = a.out / f"{a.arch}-{time.strftime('%Y%m%d-%H%M%S')}"
     run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "config.json").write_text(
-        json.dumps({k: str(v) for k, v in vars(a).items()}, indent=2)
-    )
+    config: dict = {k: str(v) for k, v in vars(a).items()}
+    config["provenance"] = provenance(a.splits, device_name(device))
+    if config["provenance"]["git_dirty"]:
+        print("warning: uncommitted changes, so the git SHA doesn't fully describe this run")
+    (run_dir / "config.json").write_text(json.dumps(config, indent=2))
     best, history = -1.0, []
     for epoch in range(1, a.epochs + 1):
         model.train()

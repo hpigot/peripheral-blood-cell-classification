@@ -10,6 +10,7 @@ from .data import read_splits
 from .dataset import CellDataset
 from .metrics import fit_temperature, report
 from .model import build_model, pick_device, transforms
+from .provenance import device_name, provenance
 from .train import predict_logits
 
 
@@ -44,10 +45,13 @@ def main(argv: list[str] | None = None) -> None:
     result = {
         "uncalibrated": report(test_logits, test_y, classes),
         "temperature_scaled": report(test_logits, test_y, classes, temperature=t),
+        # the evaluating machine and code can differ from the training ones
+        "provenance": provenance(a.splits, device_name(device)),
     }
     out = a.checkpoint.with_name("test_report.json")
     out.write_text(json.dumps(result, indent=2))
-    for k, r in result.items():
+    for k in ("uncalibrated", "temperature_scaled"):
+        r = result[k]
         print(
             f"{k:20s} acc {r['accuracy']:.4f}  bal-acc {r['balanced_accuracy']:.4f}  "
             f"macro-F1 {r['macro_f1']:.4f}  ECE {r['ece']:.4f}"
