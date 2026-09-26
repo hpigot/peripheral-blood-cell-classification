@@ -14,6 +14,7 @@ from .data import class_names, read_splits
 from .dataset import CellDataset
 from .metrics import report
 from .model import ARCHS, build_model, pick_device, transforms
+from .provenance import device_name, provenance
 
 
 def predict_logits(model, loader, device) -> tuple[np.ndarray, np.ndarray]:
@@ -65,7 +66,9 @@ def main(argv: list[str] | None = None) -> None:
         persistent_workers=a.workers > 0,
         pin_memory=device.type == "cuda",
     )
-    train_dl = loader(train_ds, shuffle=True)
+    # Shuffling and each worker's augmentation seed come from their own generator,
+    # so the data a run sees doesn't depend on how model setup used the global RNG.
+    train_dl = loader(train_ds, shuffle=True, generator=torch.Generator().manual_seed(a.seed))
     val_dl = loader(val_ds, shuffle=False)
 
     model = build_model(a.arch, len(classes), pretrained=a.pretrained).to(device)
@@ -77,9 +80,11 @@ def main(argv: list[str] | None = None) -> None:
 
     run_dir = a.out / f"{a.arch}-{time.strftime('%Y%m%d-%H%M%S')}"
     run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "config.json").write_text(
-        json.dumps({k: str(v) for k, v in vars(a).items()}, indent=2)
-    )
+    config: dict = {k: str(v) for k, v in vars(a).items()}
+    config["provenance"] = provenance(a.splits, device_name(device))
+    if config["provenance"]["git_dirty"]:
+        print("warning: uncommitted changes, so the git SHA doesn't fully describe this run")
+    (run_dir / "config.json").write_text(json.dumps(config, indent=2))
     best, history = -1.0, []
     for epoch in range(1, a.epochs + 1):
         model.train()
@@ -99,12 +104,13 @@ def main(argv: list[str] | None = None) -> None:
                 "epoch": epoch,
                 "train_loss": total / len(train_ds),
                 **{k: r[k] for k in ("accuracy", "balanced_accuracy", "macro_f1", "ece")},
+                "seconds": round(time.time() - t0, 1),  # training plus validation
             }
         )
         print(
             f"epoch {epoch:2d}  loss {history[-1]['train_loss']:.4f}  "
             f"val bal-acc {r['balanced_accuracy']:.4f}  ece {r['ece']:.4f}  "
-            f"({time.time() - t0:.0f}s)"
+            f"({history[-1]['seconds']:.0f}s)"
         )
         # rewritten every epoch so an interrupted run keeps its curve
         (run_dir / "history.json").write_text(json.dumps(history, indent=2))
