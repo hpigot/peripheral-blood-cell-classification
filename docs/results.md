@@ -90,7 +90,17 @@ called erythroblasts. The corrections also cost 1.5–4.2 points on PBC's own
 test split, so part of the loss is the correction's, not the lab's. Size
 is too small a difference to matter.
 
-So the drop isn't a colour cast that preprocessing can remove. The likely
-rest (Raabin's images are softer, and camera and smear preparation differ)
-can't be corrected image by image, which points to training on more than
-one lab's data.
+Training for it instead doesn't help either. MobileNet retrained with
+much stronger colour jitter (`--colour-jitter strong`: hue ±36° instead
+of ±11°, saturation ±40% instead of ±15%; one seed) scores 98.7% on PBC
+and 36.4% on Raabin, against 38.5% before. The pattern repeats: under 1%
+of monocytes are called eosinophils, but 0.3% of eosinophils are
+recognised, and 91% of them are called neutrophils when forced to one of
+the five shared classes. Taught to ignore colour, the model loses the
+cue it used for eosinophils, their pink-orange granules. Plain accuracy
+rises from 52% to 68% only because Raabin is mostly neutrophils.
+
+So the drop isn't a colour cast that preprocessing or augmentation can
+remove. The likely rest (Raabin's images are softer, and camera and
+smear preparation differ) can't be corrected image by image, which
+points to training on more than one lab's data.
