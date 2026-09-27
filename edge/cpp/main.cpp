@@ -2,14 +2,12 @@
 //
 // Usage: bloodcell_infer <model.onnx> <image_or_dir> [--threads N] [--warmup N]
 //
-// Preprocessing must match src/bloodcell/model.py (see <model>.json sidecar):
-// resize to 224x224, BGR->RGB, /255, normalize with ImageNet mean/std, NCHW float32.
+// Preprocessing (preprocess.hpp) must match src/bloodcell/model.py.
 // Class names and the temperature come from the sidecar JSON: confidence is
 // softmax(logits / temperature), calibrated as in Python (ADR 0005).
 
 #include <onnxruntime_cxx_api.h>
 #include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
 
 #include <algorithm>
 #include <array>
@@ -23,11 +21,9 @@
 #include <string>
 #include <vector>
 
-namespace fs = std::filesystem;
+#include "preprocess.hpp"
 
-constexpr int kSize = 224;
-constexpr float kMean[3] = {0.485f, 0.456f, 0.406f};
-constexpr float kStd[3] = {0.229f, 0.224f, 0.225f};
+namespace fs = std::filesystem;
 
 // Minimal extraction of "classes": [...] from the sidecar; avoids a JSON dependency.
 static std::vector<std::string> load_classes(const fs::path& json_path) {
@@ -57,18 +53,6 @@ static float load_temperature(const fs::path& json_path) {
   return std::stof(m[1].str());
 }
 
-static void preprocess(const cv::Mat& bgr, float* dst) {
-  cv::Mat rgb, resized;
-  cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);
-  cv::resize(rgb, resized, cv::Size(kSize, kSize), 0, 0, cv::INTER_LINEAR);
-  const int plane = kSize * kSize;
-  for (int y = 0; y < kSize; ++y) {
-    const auto* row = resized.ptr<cv::Vec3b>(y);
-    for (int x = 0; x < kSize; ++x)
-      for (int c = 0; c < 3; ++c)
-        dst[c * plane + y * kSize + x] = (row[x][c] / 255.0f - kMean[c]) / kStd[c];
-  }
-}
 
 static std::vector<fs::path> list_images(const fs::path& p) {
   if (fs::is_regular_file(p)) return {p};

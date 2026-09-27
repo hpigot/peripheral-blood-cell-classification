@@ -14,8 +14,8 @@ error is raised.
 Evaluation preprocessing is fixed: resize to 224×224 (bilinear), RGB, scale
 to [0, 1], normalize with ImageNet mean/std, NCHW float32. It is defined in
 `model.py` (`INPUT_SIZE`, `MEAN`, `STD`), written to the `.json` sidecar by
-`bloodcell-export`, and mirrored in `edge/cpp/main.cpp`. Class names come
-only from the sidecar.
+`bloodcell-export`, and mirrored in `edge/cpp/preprocess.hpp`. Class names
+come only from the sidecar.
 
 ## Consequences
 

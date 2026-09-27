@@ -2,7 +2,7 @@
 
 The preprocessing constants are the contract with the C++ edge code: resize
 to INPUT_SIZE, RGB, scale to [0, 1], normalize with MEAN/STD, NCHW float32.
-Change them here and in edge/cpp/main.cpp together.
+Change them here and in edge/cpp/preprocess.hpp together.
 """
 
 from __future__ import annotations
