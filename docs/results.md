@@ -64,5 +64,33 @@ have counts as wrong (25% of cells for MobileNet, 12% for EfficientNet).
 **Caveats.** Test-A was imaged on the same equipment as Raabin's own
 training set; Test-B (another microscope) isn't in the copy used. The
 numeric-label to class mapping is inferred from the paper's class counts
-and checked by eye. Crops also differ in scale (575 px vs 360 px, both
-resized to 224 px), so stain is the likeliest cause, not a proven one.
+and checked by eye.
+
+## Is it the stain?
+
+Raabin's nuclei are magenta where PBC's are blue-purple, and its cells sit
+about 7% larger in the frame (median lymphocyte nucleus 65 px vs 60 px at
+224 px). `bloodcell-shift` corrects each at test time, towards PBC, with no
+retraining: global colour (Reinhard, CIELAB mean and spread), the stain
+colours themselves (Macenko), and cell size.
+
+| Raabin balanced accuracy, all 8 classes | MobileNetV3-Small | EfficientNet-B0 |
+|---|--:|--:|
+| As is | 38.5% | 56.5% |
+| Global colour (Reinhard) | 27.4% | 35.6% |
+| Stain colours (Macenko) | 30.7% | 24.6% |
+| Cell size (× 0.93) | 35.2% | 54.6% |
+| Stain colours and size | 30.4% | 23.5% |
+
+No correction helps. Colour is behind the shortcut: after either colour
+correction, MobileNet calls fewer than 5% of Raabin's monocytes
+eosinophils, down from 54%. But the errors move rather than go away:
+after Macenko, 53% (MobileNet) and 66% (EfficientNet) of lymphocytes are
+called erythroblasts. The corrections also cost 1.5–4.2 points on PBC's own
+test split, so part of the loss is the correction's, not the lab's. Size
+is too small a difference to matter.
+
+So the drop isn't a colour cast that preprocessing can remove. The likely
+rest (Raabin's images are softer, and camera and smear preparation differ)
+can't be corrected image by image, which points to training on more than
+one lab's data.

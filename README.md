@@ -7,9 +7,10 @@ images: a PyTorch prototype, then C++ inference on a Raspberry Pi.
 
 Two small pretrained CNNs score 99% balanced accuracy on the PBC dataset's
 own test split. On images from another lab (Raabin-WBC), without
-retraining, the same checkpoints drop to 39% and 57%. The errors point to
-stain: the other lab's stain is pinker, and MobileNet calls 54% of its
-monocytes eosinophils, the class defined by pink-orange granules.
+retraining, the same checkpoints drop to 39% and 57%. The other lab's
+stain is pinker, and MobileNet calls 54% of its monocytes eosinophils, the
+class defined by pink-orange granules. Normalising the colour removes that
+error but not the drop: the errors move to other classes.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/external-recall-dark.png">
@@ -52,6 +53,7 @@ uv run bloodcell-split
 uv run bloodcell-train --arch mobilenet_v3_small --epochs 15
 uv run bloodcell-eval runs/<run>/best.pt
 uv run bloodcell-external runs/<run>/best.pt     # Raabin-WBC
+uv run bloodcell-shift runs/<run>/best.pt        # colour and size corrections
 uv run bloodcell-export runs/<run>/best.pt       # -> best.onnx + best.json
 uv run bloodcell-plot runs/<run>
 ```
