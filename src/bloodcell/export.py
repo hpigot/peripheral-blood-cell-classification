@@ -80,6 +80,15 @@ def main(argv: list[str] | None = None) -> None:
         verbose=False,
     )
 
+    # The temperature belongs to the trained model (ADR 0005): without it the
+    # edge would report uncalibrated confidence.
+    report = a.checkpoint.with_name("test_report.json")
+    if report.is_file():
+        temperature = json.loads(report.read_text())["temperature_scaled"]["temperature"]
+    else:
+        temperature = 1.0
+        print(f"warning: {report} not found, so the sidecar has temperature 1 (uncalibrated)")
+
     # Sidecar metadata = the preprocessing contract the C++ side must follow.
     meta = {
         "classes": ckpt["classes"],
@@ -89,6 +98,7 @@ def main(argv: list[str] | None = None) -> None:
         "layout": "NCHW",
         "color": "RGB",
         "scale": "1/255",
+        "temperature": temperature,
     }
     onnx_path.with_suffix(".json").write_text(json.dumps(meta, indent=2))
 

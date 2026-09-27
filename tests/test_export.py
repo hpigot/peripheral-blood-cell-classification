@@ -33,7 +33,16 @@ def test_export_writes_onnx_sidecar_and_check(tmp_path):
     meta = json.loads((tmp_path / "best.json").read_text())
     assert meta["classes"] == CLASSES
     assert meta["input_size"] == INPUT_SIZE
+    assert meta["temperature"] == 1.0  # no test_report.json yet
     check = json.loads((tmp_path / "export_check.json").read_text())
     assert check["source"] == "random inputs"
     assert check["top1_agreement"] == 1.0
     assert check["max_abs_logit_diff"] <= check["tolerance"]
+
+
+def test_sidecar_carries_the_fitted_temperature(tmp_path):
+    ckpt = _checkpoint(tmp_path)
+    report = {"temperature_scaled": {"temperature": 0.61}}
+    (tmp_path / "test_report.json").write_text(json.dumps(report))
+    _export(tmp_path, ckpt)
+    assert json.loads((tmp_path / "best.json").read_text())["temperature"] == 0.61
