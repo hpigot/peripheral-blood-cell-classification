@@ -4,7 +4,8 @@
 //
 // Preprocessing must match src/bloodcell/model.py (see <model>.json sidecar):
 // resize to 224x224, BGR->RGB, /255, normalize with ImageNet mean/std, NCHW float32.
-// Class names are read from the sidecar JSON's "classes" array.
+// Class names and the temperature come from the sidecar JSON: confidence is
+// softmax(logits / temperature), calibrated as in Python (ADR 0005).
 
 #include <onnxruntime_cxx_api.h>
 #include <opencv2/imgcodecs.hpp>
@@ -45,6 +46,17 @@ static std::vector<std::string> load_classes(const fs::path& json_path) {
   return out;
 }
 
+// "temperature": <number> from the sidecar; 1 (uncalibrated) when it's missing.
+static float load_temperature(const fs::path& json_path) {
+  std::ifstream f(json_path);
+  std::stringstream ss;
+  ss << f.rdbuf();
+  std::string s = ss.str();
+  std::smatch m;
+  if (!std::regex_search(s, m, std::regex(R"("temperature"\s*:\s*([0-9.eE+-]+))"))) return 1.0f;
+  return std::stof(m[1].str());
+}
+
 static void preprocess(const cv::Mat& bgr, float* dst) {
   cv::Mat rgb, resized;
   cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);
@@ -83,7 +95,9 @@ int main(int argc, char** argv) {
     else if (flag == "--warmup") warmup = std::stoi(argv[i + 1]);
   }
 
-  auto classes = load_classes(fs::path(model_path).replace_extension(".json"));
+  auto sidecar = fs::path(model_path).replace_extension(".json");
+  auto classes = load_classes(sidecar);
+  const float temperature = load_temperature(sidecar);
 
   Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "bloodcell");
   Ort::SessionOptions opts;
@@ -131,9 +145,9 @@ int main(int argc, char** argv) {
     const float* logits = out[0].GetTensorData<float>();
     size_t n = out[0].GetTensorTypeAndShapeInfo().GetElementCount();
     float mx = *std::max_element(logits, logits + n), sum = 0.f;
-    for (size_t k = 0; k < n; ++k) sum += std::exp(logits[k] - mx);
+    for (size_t k = 0; k < n; ++k) sum += std::exp((logits[k] - mx) / temperature);
     size_t best = std::max_element(logits, logits + n) - logits;
-    float conf = 1.0f / sum;  // exp(max - max) / sum
+    float conf = 1.0f / sum;  // exp((max - max) / T) / sum
     std::string label = best < classes.size() ? classes[best] : std::to_string(best);
     std::cout << path.string() << "\t" << label << "\t" << conf << "\n";
   }
