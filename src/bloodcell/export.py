@@ -17,7 +17,7 @@ def main(argv: list[str] | None = None) -> None:
 
     ap = argparse.ArgumentParser(description="Export checkpoint to ONNX.")
     ap.add_argument("checkpoint", type=Path)
-    ap.add_argument("--opset", type=int, default=17)
+    ap.add_argument("--opset", type=int, default=18)
     a = ap.parse_args(argv)
 
     ckpt = torch.load(a.checkpoint, map_location="cpu")
@@ -36,6 +36,8 @@ def main(argv: list[str] | None = None) -> None:
         dynamic_shapes=({0: torch.export.Dim("batch")},),
         opset_version=a.opset,
         dynamo=True,
+        # its progress messages include emoji, which crash a redirected Windows console
+        verbose=False,
     )
     # Sidecar metadata = the preprocessing contract the C++ side must follow.
     meta = {
