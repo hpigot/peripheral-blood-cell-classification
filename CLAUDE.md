@@ -18,7 +18,8 @@ in CONTRIBUTING.md. Follow them.
 - **Preprocessing contract.** `INPUT_SIZE`, `MEAN` and `STD` in `model.py`,
   the sidecar JSON written by `export.py`, and `kSize`/`kMean`/`kStd` in
   `edge/cpp/preprocess.hpp` must agree. If you change one, change all three
-  in the same commit.
+  in the same commit. `edge/parity.sh` (CI) checks the C++ model input
+  against torchvision's, value by value.
 - `data.py` and `metrics.py` must import without torch. Put torch code in
   `dataset.py`, `model.py`, `train.py`, `evaluate.py` or `export.py`.
 - `data/splits.csv` defines the test set. Don't regenerate it unless an

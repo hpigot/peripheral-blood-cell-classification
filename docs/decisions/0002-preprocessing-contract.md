@@ -26,3 +26,11 @@ come only from the sidecar.
 - torchvision resizes PIL images with antialiasing and OpenCV's
   `INTER_LINEAR` doesn't, so small numerical differences are expected. The
   parity test decides whether they matter.
+
+## Update (#35)
+
+The differences mattered. On PBC's test split, OpenCV's resize gave pixels
+up to 37/255 away from Pillow's and changed 7 of 2,562 predictions. The C++
+side now ports Pillow's resize and gives the same model input as
+torchvision, value for value. `edge/parity.sh` checks that in CI, along
+with the predictions end to end.
