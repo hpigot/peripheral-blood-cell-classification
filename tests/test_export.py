@@ -30,6 +30,7 @@ def test_export_writes_onnx_sidecar_and_check(tmp_path):
     _export(tmp_path, _checkpoint(tmp_path))  # raises SystemExit if ONNX and torch disagree
 
     assert (tmp_path / "best.onnx").is_file()
+    assert not (tmp_path / "best.onnx.data").exists()  # weights inside the .onnx
     meta = json.loads((tmp_path / "best.json").read_text())
     assert meta["classes"] == CLASSES
     assert meta["input_size"] == INPUT_SIZE

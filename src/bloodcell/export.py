@@ -78,6 +78,8 @@ def main(argv: list[str] | None = None) -> None:
         dynamo=True,
         # its progress messages include emoji, which crash a redirected Windows console
         verbose=False,
+        # one file to copy to the device; the weights are far below ONNX's 2 GB limit
+        external_data=False,
     )
 
     # The temperature belongs to the trained model (ADR 0005): without it the
