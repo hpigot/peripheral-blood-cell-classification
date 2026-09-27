@@ -9,7 +9,7 @@ import sys
 from importlib import metadata
 from pathlib import Path
 
-PACKAGES = ("torch", "torchvision", "numpy", "scikit-learn", "pillow")
+PACKAGES = ("torch", "torchvision", "numpy", "scikit-learn", "pillow", "onnx", "onnxruntime")
 
 
 def _git(*args: str) -> str | None:
