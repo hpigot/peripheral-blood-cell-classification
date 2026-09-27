@@ -23,4 +23,5 @@ cmake --build build
 ```
 
 stdout is `path<TAB>label<TAB>confidence`; latency stats (p50/p95, img/s)
-go to stderr. Scoring `preds.tsv` against the split CSV is a Phase 2 task.
+go to stderr. Confidence is temperature-scaled with the `temperature` from
+the sidecar. Scoring `preds.tsv` against the split CSV is a Phase 2 task.
