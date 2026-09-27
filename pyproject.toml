@@ -31,6 +31,7 @@ bloodcell-eval = "bloodcell.evaluate:main"
 bloodcell-export = "bloodcell.export:main"
 bloodcell-plot = "bloodcell.plots:main"
 bloodcell-external = "bloodcell.external:main"
+bloodcell-shift = "bloodcell.shift:main"
 
 [dependency-groups]
 dev = [
