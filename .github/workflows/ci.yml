@@ -51,7 +51,8 @@ jobs:
       - run: uv run pytest --cov --cov-report=term-missing
 
   edge-cpp:
-    # Compile check on x86; the Pi build uses the aarch64 ORT release instead.
+    # Build on x86 and check against Python; the Pi build uses the aarch64 ORT
+    # release instead.
     runs-on: ubuntu-latest
     env:
       ORT_VERSION: 1.30.0
@@ -66,3 +67,8 @@ jobs:
           -DONNXRUNTIME_ROOT="$RUNNER_TEMP/onnxruntime-linux-x64-${ORT_VERSION}"
           -DCMAKE_CXX_FLAGS="-Wall -Wextra"
       - run: cmake --build build -j
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+      - run: uv sync --locked --extra cpu --extra export
+      - run: bash edge/parity.sh build

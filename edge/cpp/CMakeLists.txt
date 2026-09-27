@@ -22,3 +22,7 @@ add_executable(bloodcell_infer main.cpp)
 target_include_directories(bloodcell_infer PRIVATE ${ONNXRUNTIME_ROOT}/include)
 target_link_libraries(bloodcell_infer PRIVATE ${ONNXRUNTIME_LIB} ${OpenCV_LIBS})
 set_target_properties(bloodcell_infer PROPERTIES BUILD_RPATH ${ONNXRUNTIME_ROOT}/lib)
+
+# Writes the model input for one image, so edge/parity.sh can compare it with Python's
+add_executable(bloodcell_preprocess preprocess_main.cpp)
+target_link_libraries(bloodcell_preprocess PRIVATE ${OpenCV_LIBS})

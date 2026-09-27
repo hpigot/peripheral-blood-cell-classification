@@ -37,9 +37,9 @@ Details, figures and caveats: [docs/results.md](docs/results.md).
 ## Status
 
 - **Phase 1, desktop prototype:** done.
-- **Phase 2, edge:** ONNX export works and the C++ ONNX Runtime program
-  compiles in CI; INT8 quantization and Pi benchmarks are next
-  ([#22](../../issues/22)).
+- **Phase 2, edge:** the C++ ONNX Runtime program gives the same answers
+  as Python on all 2,562 test images, and CI checks it; INT8 quantization
+  and Pi benchmarks are next ([#22](../../issues/22)).
 
 ## Quick start
 
