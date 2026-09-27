@@ -13,6 +13,7 @@ dependencies = [
   "numpy>=2.0",
   "pillow>=10.0",
   "scikit-learn>=1.5",
+  "scipy>=1.18.1",
 ]
 
 [project.optional-dependencies]
@@ -84,5 +85,5 @@ warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 # these ship no type information
-module = ["onnxruntime", "seaborn", "sklearn", "sklearn.*", "torchvision", "torchvision.*"]
+module = ["onnxruntime", "scipy", "scipy.*", "seaborn", "sklearn", "sklearn.*", "torchvision", "torchvision.*"]
 ignore_missing_imports = true
