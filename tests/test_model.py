@@ -19,3 +19,11 @@ def test_eval_transform_output_shape():
 
     x = transforms(train=False)(Image.new("RGB", (360, 363)))
     assert tuple(x.shape) == (3, INPUT_SIZE, INPUT_SIZE)
+
+
+@pytest.mark.parametrize("colour", ["standard", "strong"])
+def test_train_transform_output_shape(colour):
+    from PIL import Image
+
+    x = transforms(train=True, colour=colour)(Image.new("RGB", (360, 363)))
+    assert tuple(x.shape) == (3, INPUT_SIZE, INPUT_SIZE)

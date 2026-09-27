@@ -13,7 +13,7 @@ import numpy as np
 from .data import class_names, read_splits
 from .dataset import CellDataset
 from .metrics import report
-from .model import ARCHS, build_model, pick_device, transforms
+from .model import ARCHS, COLOUR_JITTER, build_model, pick_device, transforms
 from .provenance import device_name, provenance
 
 
@@ -42,6 +42,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument(
+        "--colour-jitter",
+        choices=list(COLOUR_JITTER),
+        default="standard",
+        help="colour augmentation strength (see model.COLOUR_JITTER)",
+    )
     ap.add_argument("--out", type=Path, default=Path("runs"))
     ap.add_argument(
         "--no-pretrained",
@@ -55,7 +61,7 @@ def main(argv: list[str] | None = None) -> None:
     device = pick_device()
     splits = read_splits(a.splits, a.root)
     classes = class_names(splits)
-    train_ds = CellDataset(splits["train"], classes, transforms(train=True))
+    train_ds = CellDataset(splits["train"], classes, transforms(train=True, colour=a.colour_jitter))
     val_ds = CellDataset(splits["val"], classes, transforms(train=False))
     # Keep workers alive between epochs: on Windows each new worker re-imports
     # torch, which left the GPU idle at the start of every pass.

@@ -39,7 +39,15 @@ def load_checkpoint(path, device):
     return model.to(device).eval(), ckpt["classes"]
 
 
-def transforms(train: bool):
+# ColorJitter strengths. "strong" was fixed before scoring any retrained model on
+# Raabin-WBC, wide enough to cover its nuclei (magenta where PBC's are blue-purple).
+COLOUR_JITTER = {
+    "standard": {"brightness": 0.15, "contrast": 0.15, "saturation": 0.15, "hue": 0.03},
+    "strong": {"brightness": 0.3, "contrast": 0.3, "saturation": 0.4, "hue": 0.1},
+}
+
+
+def transforms(train: bool, colour: str = "standard"):
     from torchvision import transforms as T
 
     norm = [T.ToTensor(), T.Normalize(MEAN, STD)]
@@ -52,7 +60,7 @@ def transforms(train: bool):
             T.RandomHorizontalFlip(),
             T.RandomVerticalFlip(),
             T.RandomRotation(180),
-            T.ColorJitter(brightness=0.15, contrast=0.15, saturation=0.15, hue=0.03),
+            T.ColorJitter(**COLOUR_JITTER[colour]),
             *norm,
         ]
     )
