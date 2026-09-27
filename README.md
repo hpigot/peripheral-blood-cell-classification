@@ -9,8 +9,9 @@ Two small pretrained CNNs score 99% balanced accuracy on the PBC dataset's
 own test split. On images from another lab (Raabin-WBC), without
 retraining, the same checkpoints drop to 39% and 57%. The other lab's
 stain is pinker, and MobileNet calls 54% of its monocytes eosinophils, the
-class defined by pink-orange granules. Normalising the colour removes that
-error but not the drop: the errors move to other classes.
+class defined by pink-orange granules. Normalising the colour, or training
+the model to ignore it, removes that error but not the drop: the errors
+move to other classes.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/external-recall-dark.png">
