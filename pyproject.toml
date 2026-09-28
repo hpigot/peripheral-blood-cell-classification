@@ -33,6 +33,7 @@ bloodcell-plot = "bloodcell.plots:main"
 bloodcell-external = "bloodcell.external:main"
 bloodcell-shift = "bloodcell.shift:main"
 bloodcell-score = "bloodcell.score:main"
+bloodcell-quantize = "bloodcell.quantize:main"
 
 [dependency-groups]
 dev = [
@@ -87,5 +88,5 @@ warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 # these ship no type information
-module = ["onnxruntime", "scipy", "scipy.*", "seaborn", "sklearn", "sklearn.*", "torchvision", "torchvision.*"]
+module = ["onnxruntime", "onnxruntime.*", "scipy", "scipy.*", "seaborn", "sklearn", "sklearn.*", "torchvision", "torchvision.*"]
 ignore_missing_imports = true
