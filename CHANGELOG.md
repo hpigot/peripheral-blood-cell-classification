@@ -17,6 +17,8 @@ and versions follow the project phases in CONTRIBUTING.md.
   metrics as `bloodcell-eval`, optionally against Python's.
 - `edge/parity.sh`, run in CI: checks the C++ model input against
   torchvision's value by value, and the predictions end to end.
+- `bloodcell-quantize`: static INT8 quantization with ONNX Runtime, scored
+  against FP32. Not adopted: it costs 6 to 7 points (ADR 0006).
 
 ### Fixed
 

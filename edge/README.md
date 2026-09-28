@@ -42,3 +42,11 @@ matches torchvision's value by value (`bloodcell_preprocess` writes it),
 and that labels and confidences match Python's end to end. CI runs it. On
 PBC's test split both baselines give the same label as Python on all
 2,562 images, with confidences matching to the 4 decimals Python writes.
+
+## INT8
+
+`uv run bloodcell-quantize runs/<run>/best.onnx` writes `best.int8.onnx`
+and scores it against FP32 on the test split. It isn't used: INT8 loses 6
+to 7 points of balanced accuracy on both baselines
+([ADR 0006](../docs/decisions/0006-int8-quantization.md)), so the edge runs
+FP32.
