@@ -1,5 +1,7 @@
 # peripheral-blood-cell-classification
 
+[![CI](https://github.com/hpigot/peripheral-blood-cell-classification/actions/workflows/ci.yml/badge.svg)](https://github.com/hpigot/peripheral-blood-cell-classification/actions/workflows/ci.yml)
+
 Classifying white blood cells, platelets and erythroblasts in blood smear
 images: a PyTorch prototype, then C++ inference on a Raspberry Pi.
 
