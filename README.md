@@ -14,6 +14,15 @@ the model to ignore it, removes that error but not the drop: the errors
 move to other classes.
 
 <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/cells-dark.png">
+  <img alt="One cell per class from each lab at the model's 224-pixel input. PBC cells are sharp on a pale background; Raabin-WBC cells are softer, with magenta nuclei and darker red cells. After stain normalisation towards PBC the Raabin colours turn blue-purple, but the cells still look different." src="docs/figures/cells.png" width="640">
+</picture>
+
+*One test cell per class, as the model sees it. Bottom row: the Raabin
+cell stain-normalised towards PBC (Macenko). Images from PBC (Acevedo et
+al. 2020, CC BY 4.0) and Raabin-WBC (Kouzehkanan et al. 2022).*
+
+<picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/external-recall-dark.png">
   <img alt="Recall by class on Raabin-WBC for both models. EfficientNet-B0: monocyte 85%, lymphocyte 74%, neutrophil 59%, eosinophil 37%, basophil 27%. MobileNetV3-Small: eosinophil 79%, neutrophil 60%, lymphocyte 37%, monocyte 12%, basophil 5%." src="docs/figures/external-recall.png" width="640">
 </picture>
@@ -73,7 +82,8 @@ are likely optimistic; that is why the external test matters.
 
 [Raabin-WBC](https://www.nature.com/articles/s41598-021-04426-x)
 (Kouzehkanan et al., Sci Rep 2022) Test-A: 4,339 cells, 5 classes shared
-with PBC. Neither dataset is redistributed here.
+with PBC. Neither dataset is redistributed here, apart from the ten cells
+in the figure above, shown with credit.
 
 ## Development
 

@@ -74,6 +74,11 @@ about 7% larger in the frame (median lymphocyte nucleus 65 px vs 60 px at
 retraining: global colour (Reinhard, CIELAB mean and spread), the stain
 colours themselves (Macenko), and cell size.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/cells-dark.png">
+  <img alt="One cell per class from each lab at the model's 224-pixel input, and the Raabin cells stain-normalised towards PBC: the colours move towards PBC's, the softer focus and darker red cells stay." src="figures/cells.png" width="640">
+</picture>
+
 | Raabin balanced accuracy, all 8 classes | MobileNetV3-Small | EfficientNet-B0 |
 |---|--:|--:|
 | As is | 38.5% | 56.5% |
