@@ -409,6 +409,66 @@ def misclassified(predictions: list[dict], root: Path, mode: str, n: int = 12) -
     return fig
 
 
+def cell_grid(rows: dict[str, list[Image.Image]], classes: list[str], mode: str) -> Figure:
+    """One image per class (columns) for each source (rows), labelled on the left."""
+    with style(mode) as p:
+        fig = Figure(
+            figsize=(1.45 * len(classes) + 1.3, 1.5 * len(rows) + 0.6), layout="constrained"
+        )
+        axes = fig.subplots(len(rows), len(classes), squeeze=False)
+        for r, (source, images) in enumerate(rows.items()):
+            for c, img in enumerate(images):
+                ax = axes[r, c]
+                ax.imshow(img)
+                # hide the frame but keep the y label, which names the row
+                ax.set_xticks([])
+                ax.set_yticks([])
+                for spine in ax.spines.values():
+                    spine.set_visible(False)
+                if r == 0:
+                    ax.set_title(CLASS_NAMES.get(classes[c], classes[c]), loc="center", fontsize=9)
+                if c == 0:
+                    ax.set_ylabel(source, fontsize=9, color=p.ink2, labelpad=6)
+    return fig
+
+
+def lab_cells(
+    root: Path, splits_csv: Path, raabin: Path, seed: int = 0
+) -> tuple[dict[str, list[Image.Image]], list[str]]:
+    """One test cell per shared class from each lab, as the model sees it (224 px).
+
+    The third row is the Raabin cell stain-normalised towards PBC (Macenko, as in
+    bloodcell-shift): the colour can be matched, the cell still differs.
+    """
+    import random
+
+    from .data import read_splits
+    from .external import RAABIN_LABELS, read_raabin
+    from .model import INPUT_SIZE
+    from .shift import target_stains
+    from .stain import macenko
+
+    classes = sorted(RAABIN_LABELS.values())
+    splits = read_splits(splits_csv, root)
+    ext = read_raabin(raabin / "Test.json", raabin / "Test")
+    rng = random.Random(seed)
+
+    def pick(samples, cls):
+        path = rng.choice([s.path for s in samples if s.label == cls])
+        img = Image.open(path).convert("RGB")
+        return img.resize((INPUT_SIZE, INPUT_SIZE), Image.Resampling.BILINEAR)
+
+    pbc = [pick(splits["test"], c) for c in classes]
+    other = [pick(ext, c) for c in classes]
+    stains = target_stains(splits["train"])
+    rows = {
+        "PBC": pbc,
+        "Raabin-WBC": other,
+        "Raabin-WBC,\nstain-normalised": [macenko(img, *stains) for img in other],
+    }
+    return rows, classes
+
+
 # --- rendering -----------------------------------------------------------------------
 
 
@@ -512,6 +572,13 @@ def main(argv: list[str] | None = None) -> None:
         default=Path("data/PBC_dataset_normal_DIB"),
         help="image folder, for the mistakes figure (skipped if it doesn't exist)",
     )
+    ap.add_argument("--splits", type=Path, default=Path("data/splits.csv"))
+    ap.add_argument(
+        "--raabin",
+        type=Path,
+        default=Path("data/raabin/Raabin-WBC"),
+        help="Raabin-WBC folder, for the cells figure when comparing (skipped if missing)",
+    )
     a = ap.parse_args(argv)
     root = a.root if a.root.is_dir() else None
     if len(a.run_dirs) == 1:
@@ -520,6 +587,9 @@ def main(argv: list[str] | None = None) -> None:
         ap.error("--out is required when comparing several runs")
     else:
         paths = plot_compare(a.run_dirs, a.out, root)
+        if root is not None and a.raabin.is_dir():
+            rows, classes = lab_cells(root, a.splits, a.raabin)
+            paths += render("cells", lambda m: cell_grid(rows, classes, m), a.out, PHOTO_DPI)
     for path in paths:
         print(f"wrote {path}")
 
