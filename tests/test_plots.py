@@ -122,3 +122,13 @@ def test_at_most_three_series_per_figure():
         plots.recall_shift({f"m{i}": rec for i in range(3)}, "light")
     with pytest.raises(ValueError, match="at most 3"):
         plots.training_curves({f"m{i}": history for i in range(4)}, "light")
+
+
+def test_cell_grid_draws_one_tile_per_class_and_source(tmp_path):
+    tile = Image.new("RGB", (224, 224), (230, 200, 210))
+    rows = {"PBC": [tile, tile], "Other lab": [tile, tile]}
+    paths = plots.render("cells", lambda m: plots.cell_grid(rows, ["basophil", "ig"], m), tmp_path)
+    assert [p.name for p in paths] == ["cells.png", "cells-dark.png"]
+    fig = plots.cell_grid(rows, ["basophil", "ig"], "light")
+    assert len(fig.axes) == 4
+    assert [ax.get_ylabel() for ax in fig.axes[::2]] == ["PBC", "Other lab"]
