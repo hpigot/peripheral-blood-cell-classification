@@ -46,7 +46,7 @@ The same checks run in pre-commit and CI:
 | Tests | `uv run pytest --cov` |
 | Secrets | gitleaks (pre-commit hook, full-history scan in CI) |
 | No data or weights | pre-commit hook: only `data/README.md` and `data/splits.csv` may be committed under `data/` |
-| C++ | CI compiles `edge/cpp` on x86 Linux against ONNX Runtime |
+| C++ | CI builds `edge/cpp` on x86 Linux and runs `edge/parity.sh`: model input and predictions must match Python's |
 
 Tests use synthetic data only. CI never downloads the dataset or
 pretrained weights.

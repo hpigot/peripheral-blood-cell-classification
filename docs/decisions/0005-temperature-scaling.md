@@ -44,3 +44,10 @@ after one parameter gives them nothing to fix.
 - Calibration here is measured on the same lab and analyser as training.
   It needs checking again on external data (#10), where confidence usually
   degrades.
+
+## Update
+
+Both follow-ups are done. The export sidecar carries T and the C++ program
+applies it (#34). On Raabin-WBC the same T raises ECE instead of cutting
+it, from 8.2% to 16.0% and from 12.1% to 19.7% (docs/results.md):
+calibration fitted at one lab doesn't carry to another.
