@@ -19,6 +19,8 @@ and versions follow the project phases in CONTRIBUTING.md.
   torchvision's value by value, and the predictions end to end.
 - `bloodcell-quantize`: static INT8 quantization with ONNX Runtime, scored
   against FP32. Not adopted: it costs 6 to 7 points (ADR 0006).
+- A figure of one cell per class from each lab, and after stain
+  normalisation, in the README (`bloodcell-plot`).
 
 ### Fixed
 
