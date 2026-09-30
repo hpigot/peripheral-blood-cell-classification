@@ -47,8 +47,9 @@ Details, figures and caveats: [docs/results.md](docs/results.md).
 
 - **Phase 1, desktop prototype:** done.
 - **Phase 2, edge:** the C++ ONNX Runtime program gives the same answers
-  as Python on all 2,562 test images, and CI checks it; INT8 quantization
-  and Pi benchmarks are next ([#22](../../issues/22)).
+  as Python on all 2,562 test images, and CI checks it. INT8 costs 6 to 7
+  points, so the edge stays FP32 ([ADR 0006](docs/decisions/0006-int8-quantization.md)).
+  Pi benchmarks are next ([#22](../../issues/22)).
 
 ## Quick start
 
